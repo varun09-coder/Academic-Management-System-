@@ -1,0 +1,2812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>University Portal - Academic Hub</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <style>
+        /* CSS Variables: CUIMS/School-Type Theme (Light Mode) */
+        :root {
+            --bg-primary: #f0f2f5; /* Light background */
+            --bg-secondary: #ffffff; /* Card/Input background */
+            --text-color: #333333; /* Dark text */
+            --accent-color: #007bff; /* Primary Blue (Brand Color) */
+            --secondary-accent: #17a2b8; /* Secondary Blue/Teal */
+            --error-color: #dc3545;
+            --success-color: #28a745; 
+            --warning-color: #ffc107;
+            --card-bg: #ffffff; /* White cards */
+            --shadow-color: rgba(0, 0, 0, 0.4); 
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background-color 0.3s;
+        }
+
+        /* --- Global Helpers --- */
+        .spinner {
+            border: 4px solid var(--bg-primary);
+            border-top: 4px solid var(--secondary-accent);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Toast Notification System */
+        #toast-container {
+            position: fixed; top: 20px; right: 20px; z-index: 1000;
+        }
+        .toast {
+            background-color: var(--bg-secondary); color: var(--text-color);
+            padding: 15px; border-radius: 8px; margin-bottom: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); opacity: 0.95;
+            border-left: 5px solid var(--accent-color);
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+        }
+        .toast.error { border-left-color: var(--error-color); }
+        .toast.success { border-left-color: var(--success-color); }
+
+        /* --- BACKGROUNDS & AUTH PAGE LAYOUT --- */
+        #auth-bg-image {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('https://placehold.co/1920x1080/0044AA/FFFFFF?text=University+Campus');
+            background-size: cover;
+            background-position: center;
+            filter: blur(8px) brightness(0.3); 
+            z-index: -2; 
+            opacity: 0; 
+            transition: opacity 1s ease;
+        }
+        
+        #three-bg {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; opacity: 0.15; filter: blur(1px);
+        }
+
+        #app-container {
+            padding: 0 20px; max-width: none; position: relative;
+            min-height: 100vh;
+        }
+        
+        h1 { 
+            font-size: 2.5em; color: var(--bg-secondary); 
+            text-align: center; position: absolute;
+            top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 10; text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.8); 
+        }
+
+        /* Auth Page Centering */
+        #auth-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 20px 0;
+        }
+
+        /* Auth Forms - Broader Look */
+        #login-section, #signup-section {
+            max-width: 550px; 
+            width: 100%;
+            box-shadow: 0 10px 30px var(--shadow-color); 
+            margin: 0; 
+            z-index: 10;
+            border: 2px solid var(--accent-color); 
+            padding: 30px; 
+            
+            /* --- FIX: Adjust vertical position to move it down from the H1 --- */
+            transform: translate(-50%, -40%); /* Changed from -50% to -40% */
+            top: 50%;
+            left: 50%;
+            position: absolute;
+        }
+        
+        /* Button Hover Animation */
+        #login-section button, #signup-section button {
+            transition: all 0.2s ease-in-out;
+        }
+        #login-section button:hover:not(:disabled), #signup-section button:hover:not(:disabled) {
+            transform: scale(1.02);
+        }
+        
+        /* Utility for separating actions in auth forms */
+        .form-divider {
+            border-top: 1px solid var(--bg-primary);
+            margin-top: 15px;
+            padding-top: 15px;
+        }
+
+        .form-toggle-link {
+            text-align: center; 
+            display: block;
+            margin-top: 15px;
+            color: var(--secondary-accent);
+            cursor: pointer;
+            text-decoration: underline;
+            opacity: 0.8;
+            font-size: 0.9em;
+        }
+        
+        /* --- DASHBOARD LAYOUT & WELCOME BANNER --- */
+        
+        #dashboard-page {
+            max-width: 1300px; 
+            margin: 40px auto; 
+            padding: 20px;
+        }
+
+        /* Welcome Banner Styling */
+        #welcome-banner {
+            background: linear-gradient(90deg, var(--accent-color) 0%, #0099ff 100%);
+            color: var(--bg-secondary);
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+            animation: slideIn 0.5s ease-out; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #welcome-text h2 {
+            color: var(--bg-secondary);
+            font-size: 2em;
+            font-weight: 700;
+            margin-bottom: 5px;
+            border-bottom: none;
+        }
+        #welcome-text p {
+            opacity: 0.9;
+            margin-bottom: 0;
+        }
+        
+        /* Logout Button on Banner */
+        #logout-button {
+            background-color: var(--error-color);
+            color: var(--bg-secondary);
+            border: none;
+            padding: 8px 20px;
+            font-weight: 600;
+        }
+        #logout-button:hover {
+            background-color: #bb5060;
+        }
+
+        /* Fixed Navigation Alignment (Left Side) */
+        #dashboard-content-area {
+            display: flex; 
+            gap: 30px; 
+            align-items: flex-start;
+        }
+        
+        #main-content-panels {
+            flex-grow: 1; 
+            width: 100%; 
+            order: 2; /* Content on Right */
+        }
+        
+        /* --- Navigation Bar (Left Sticky Menu) --- */
+        #main-nav {
+            flex-shrink: 0; 
+            width: 250px; 
+            height: fit-content; 
+            order: 1; /* Nav on Left */
+            position: sticky; 
+            top: 40px; 
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 123, 255, 0.1); 
+        }
+        
+        #main-nav h3 {
+            color: var(--accent-color);
+            border-bottom: 1px solid var(--bg-primary);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        
+        #main-nav ul { list-style: none; padding: 0; margin: 0; }
+        #main-nav li { margin-bottom: 5px; }
+
+        #main-nav a {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            color: var(--text-color);
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        /* Speed Gauge Hover Effect */
+        #main-nav a::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0; /* Bar moves from right to left */
+            width: 3px;
+            height: 100%;
+            background-color: var(--secondary-accent);
+            transform: translateX(5px);
+            transition: transform 0.3s ease;
+        }
+        #main-nav a:hover {
+            background-color: var(--bg-primary);
+            color: var(--secondary-accent);
+            transform: translateX(-5px); /* Slide to the Left on hover */
+        }
+        #main-nav a:hover::before {
+            transform: translateX(0);
+        }
+        
+        /* Active Link Styling */
+        #main-nav a.active {
+            background-color: var(--accent-color);
+            color: var(--bg-secondary);
+            font-weight: 700;
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.4);
+            animation: none;
+            transform: translateX(0);
+        }
+        /* Active link bar stays visible */
+        #main-nav a.active::before {
+             background-color: var(--warning-color);
+             transform: translateX(0);
+             width: 5px;
+        }
+
+        #main-nav a i {
+            width: 25px; 
+            text-align: center;
+            margin-right: 10px;
+            font-size: 1.1em;
+            color: var(--secondary-accent);
+            transition: color 0.3s;
+        }
+
+        #main-nav a.active i {
+            color: var(--warning-color);
+        }
+
+        /* --- ANNOUNCEMENTS POLISH --- */
+        .announcement-item {
+            border-bottom: 1px solid var(--bg-primary);
+            padding: 15px 0;
+            margin-bottom: 15px;
+            transition: background-color 0.2s;
+        }
+        .announcement-item:hover {
+            background-color: rgba(0, 123, 255, 0.05);
+            border-radius: 4px;
+        }
+        
+        .announcement-item h4 {
+            font-size: 1.15em;
+            font-weight: 600;
+            color: var(--accent-color);
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+        }
+        
+        /* Status Badge */
+        .announcement-item .badge {
+            font-size: 0.7em;
+            padding: 0.3em 0.6em;
+            margin-left: 10px;
+            background-color: var(--secondary-accent) !important;
+        }
+        
+        /* Footer/Metadata */
+        .announcement-footer {
+            margin-top: 8px;
+            font-size: 0.8em;
+            color: #6c757d;
+        }
+        
+        /* Session Log Styling */
+        #session-log-card {
+            border-left: 5px solid var(--secondary-accent);
+            padding: 20px;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+
+        /* --- Data and Content Structure --- */
+        .card {
+            padding: 30px; 
+            margin-bottom: 25px; 
+        }
+        h2 { 
+            font-size: 1.8em; color: var(--secondary-accent); 
+            border-bottom: none; 
+            padding-bottom: 0; 
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: 1fr; 
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        @media (min-width: 768px) {
+            .analytics-grid {
+                grid-template-columns: repeat(2, 1fr); 
+            }
+        }
+
+        .chart-container {
+            background-color: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            max-height: 400px;
+        }
+
+        /* Table Styles */
+        .data-table th { background-color: var(--secondary-accent); color: var(--bg-secondary); }
+        .data-table td { border: 1px solid var(--bg-primary); }
+
+        /* Media Query for Mobile */
+        @media (max-width: 900px) {
+            #dashboard-content-area {
+                flex-direction: column; 
+            }
+            #main-nav {
+                position: relative; 
+                width: 100%;
+                order: 1; 
+                top: 0;
+            }
+            #main-content-panels {
+                 order: 2;
+                 width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="toast-container"></div>
+    <div id="auth-bg-image"></div> 
+    <div id="three-bg"></div> 
+    
+    <div id="app-container">
+        <h1>🌌 University Portal</h1>
+
+        <div id="auth-page" style="display: none;">
+            
+            <div id="login-section" class="card">
+                <h2 class="text-center"><span class="text-warning">🔑</span> Login</h2>
+                <p class="text-center mb-4 text-muted">Use existing credentials (e.g., student1/pass) or sign up below.</p>
+                
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" id="username" class="form-control" placeholder="Username">
+                    <div id="username-feedback" class="invalid-feedback d-block"></div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" id="password" class="form-control" placeholder="Password">
+                    <div id="password-feedback" class="invalid-feedback d-block"></div>
+                </div>
+                
+                <p id="login-message" class="text-danger"></p>
+                
+                <div class="form-divider">
+                    <button onclick="handleLogin()" id="login-btn" class="btn btn-primary w-100 mb-3">Authenticate & Login</button>
+                    <a class="form-toggle-link" onclick="switchAuthForm('signup')">Need an account? Register Here.</a>
+                </div>
+            </div>
+
+            <div id="signup-section" class="card" style="display: none;">
+                <h2 class="text-center"><span class="text-info">📝</span> Registration</h2>
+                <p class="text-muted">Students leave the Secret Key field blank. Teachers/Admins, use secret key: **admin123**</p>
+                
+                <div class="mb-3">
+                    <label for="signup-name" class="form-label">Full Name</label>
+                    <input type="text" id="signup-name" class="form-control" placeholder="Full Name">
+                    <div id="signup-name-feedback" class="invalid-feedback d-block"></div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="signup-studentid" class="form-label">Student ID (Required for Students)</label>
+                    <input type="text" id="signup-studentid" class="form-control" placeholder="Student ID (e.g., S002)">
+                    <div id="signup-studentid-feedback" class="invalid-feedback d-block"></div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="signup-username" class="form-label">Choose Username</label>
+                    <input type="text" id="signup-username" class="form-control" placeholder="Choose Username">
+                    <div id="signup-username-feedback" class="invalid-feedback d-block"></div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="signup-password" class="form-label">Choose Password</label>
+                    <input type="password" id="signup-password" class="form-control" placeholder="Choose Password">
+                    <div id="signup-password-feedback" class="invalid-feedback d-block"></div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="signup-secret-key" class="form-label">Teacher Secret Key (Optional)</label>
+                    <input type="password" id="signup-secret-key" class="form-control" placeholder="Teacher Secret Key">
+                </div>
+                
+                <p id="signup-message" class="text-center"></p>
+                
+                <div class="form-divider">
+                    <button onclick="handleSignup()" id="signup-btn" class="btn btn-primary w-100 mb-3">Register</button>
+                    <a class="form-toggle-link" onclick="switchAuthForm('login')">Already have an account? Log In.</a>
+                </div>
+            </div>
+        </div>
+
+        <div id="dashboard-page" style="display: none;">
+            
+            <div id="welcome-banner">
+                <div id="welcome-text">
+                    <h2 class="mb-0"></h2>
+                    <p id="welcome-quote" class="mb-0"></p>
+                </div>
+                <button id="logout-button" onclick="handleLogout()" class="btn btn-danger">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+
+            <div id="dashboard-content-area">
+
+                <nav id="main-nav">
+                    <h3 class="fs-5 text-center">Portal Features</h3>
+                    <ul id="nav-list" class="list-unstyled">
+                        </ul>
+                </nav>
+
+                <div id="main-content-panels">
+
+                    <div id="course-planner-section" class="card portal-panel">
+                        <h2><i class="fas fa-layer-group text-secondary-accent me-2"></i> Course Enrollment & Management</h2>
+                        <p class="text-muted">Manage enrollment for your courses or view course offerings.</p>
+                        <hr>
+                        
+                        <div id="teacher-course-management">
+                            <div id="teacher-course-list"></div>
+                            
+                            <h4 class="mt-4">Enrollment Details: <span id="enrollment-course-title" class="text-primary"></span></h4>
+                            <div id="enrollment-details" class="row mt-3" style="display: none;">
+                                <div class="col-md-6">
+                                    <h5>Enrolled Students</h5>
+                                    <div id="enrolled-students-list" class="table-responsive"></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h5>Waitlist Students</h5>
+                                    <div id="waitlist-students-list" class="table-responsive"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="student-course-enrollment">
+                            <h4>All Available Courses</h4>
+                            <div id="student-course-list">
+                                <p class="alert alert-info">Loading courses...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="my-fees-dues-section" class="card portal-panel">
+                        <h2><i class="fas fa-receipt text-secondary-accent me-2"></i> Fees & Dues Management</h2>
+                        <hr>
+                        
+                        <div id="teacher-fees-management">
+                            <h4 class="mt-4">Manage Student Fee Status</h4>
+                            <div id="fee-management-list" class="table-responsive"></div>
+                        </div>
+
+                        <div id="student-fees-details">
+                            <h4 class="mt-4">My Financial Overview</h4>
+                            <div id="student-fee-overview" class="analytics-grid">
+                                <div class="alert alert-success d-flex flex-column justify-content-center">
+                                    <h4 class="mb-0 text-success"><i class="fas fa-check-circle"></i> Status:</h4>
+                                    <p class="mb-0 fs-4" id="fee-status-text">Loading...</p>
+                                </div>
+                                <div class="alert alert-warning d-flex flex-column justify-content-center">
+                                    <h4 class="mb-0 text-warning"><i class="fas fa-money-check-alt"></i> Amount Due:</h4>
+                                    <p class="mb-0 fs-4" id="fee-amount-text">Loading...</p>
+                                </div>
+                            </div>
+                            <h4 class="mt-4">Payment History</h4>
+                            <div id="fee-history-table" class="table-responsive"></div>
+                        </div>
+                    </div>
+
+                    <div id="progress-tracker-section" class="card portal-panel">
+                        <h2><i class="fas fa-graduation-cap text-secondary-accent me-2"></i> Degree Progress Tracker</h2>
+                        <p class="text-muted">Visual breakdown of your progress toward graduation requirements.</p>
+                        <hr>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h4 class="fs-5">Overall Completion</h4>
+                                <div class="progress mb-3" style="height: 25px;">
+                                    <div class="progress-bar bg-success" role="progressbar" aria-valuenow="55" aria-valuemin="0" aria-valuemax="100">55% Complete</div>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <h4 class="fs-5">Requirements Summary</h4>
+                                <ul class="list-group">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Major Credits Required
+                                        <span class="badge bg-primary rounded-pill">30/60</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        General Education Complete
+                                        <span class="badge bg-success rounded-pill"><i class="fas fa-check"></i> Yes</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Cumulative GPA
+                                        <span class="badge bg-info rounded-pill">3.45</span>
+                                    </li>
+                                
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="advising-hub-section" class="card portal-panel">
+                        <h2><i class="fas fa-user-friends text-secondary-accent me-2"></i> Advising Hub & Schedule</h2>
+                        <hr>
+                        
+                        <div id="teacher-advising-schedule">
+                            <h4 class="fs-5">Upcoming Appointments</h4>
+                            <div id="appointment-list" class="table-responsive"></div>
+                        </div>
+
+                        <div id="student-advising-booking">
+                            <p class="text-muted">Connect with your academic advisor and book appointments.</p>
+                            <div class="row">
+                                <div class="col-md-6 mb-4">
+                                    <h4 class="fs-5 text-primary">Your Advisor</h4>
+                                    <div class="card p-3 bg-light">
+                                        <p class="mb-1"><strong>Name:</strong> Amita Sharma</p>
+                                        <p class="mb-1"><strong>Email:</strong> amita@university.edu</p>
+                                        <p class="mb-1"><strong>Office:</strong> Academic Building, Room 210</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-4">
+                                    <h4 class="fs-5 text-primary">Book New Appointment</h4>
+                                    <label for="advisor-select" class="form-label">Select Teacher (Advisor)</label>
+                                    <select id="advisor-select" class="form-select mb-3">
+                                        </select>
+                                    <label for="appointment-date" class="form-label">Preferred Date/Time</label>
+                                    <input type="datetime-local" id="appointment-date" class="form-control mb-3">
+                                    <label for="appointment-topic" class="form-label">Topic</label>
+                                    <input type="text" id="appointment-topic" class="form-control mb-3" placeholder="e.g., Course Selection, Career Advice">
+                                    <p id="appointment-message" class="text-success"></p>
+                                    <button onclick="bookAppointment()" class="btn btn-success w-100"><i class="fas fa-calendar-plus"></i> Book Appointment</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="documents-forms-section" class="card portal-panel">
+                        <h2><i class="fas fa-file-contract text-secondary-accent me-2"></i> Documents & Forms</h2>
+                        <p class="text-muted">Quick access to essential academic and administrative forms.</p>
+                        <hr>
+                        <ul class="list-group">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <i class="fas fa-file-pdf me-2 text-danger"></i> Transcript Request Form
+                                <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-download"></i> Download</button>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <i class="fas fa-file-alt me-2 text-primary"></i> Leave of Absence Application
+                                <button class="btn btn-sm btn-primary">Submit Online</button>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <i class="fas fa-file-archive me-2 text-success"></i> Degree Audit Report
+                                <button class="btn btn-sm btn-outline-success">View Latest</button>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div id="it-support-section" class="card portal-panel">
+                        <h2><i class="fas fa-headset text-secondary-accent me-2"></i> IT Support & Help Desk</h2>
+                        <hr>
+                        
+                        <div id="teacher-ticket-review">
+                            <h4 class="fs-5">Open & In Progress Tickets</h4>
+                            <div id="ticket-list" class="table-responsive"></div>
+                        </div>
+                        
+                        <div id="student-ticket-submission">
+                            <h4 class="fs-5">Submit New IT Request</h4>
+                            <label for="ticket-title" class="form-label">Title (Summary of Issue)</label>
+                            <input type="text" id="ticket-title" class="form-control mb-3" placeholder="e.g., Wi-Fi access issue, LMS login broken">
+                            <label for="ticket-description" class="form-label">Detailed Description</label>
+                            <textarea id="ticket-description" class="form-control mb-3" rows="3" placeholder="Describe the steps to reproduce the issue."></textarea>
+                            <p id="ticket-message" class="text-success"></p>
+                            <button onclick="submitNewTicket()" class="btn btn-primary"><i class="fas fa-ticket-alt"></i> Submit Ticket</button>
+                        </div>
+                    </div>
+
+                    <div id="user-management-section" class="card portal-panel">
+                        <h2><i class="fas fa-user-tie text-secondary-accent me-2"></i> Student Management</h2>
+                        <p id="user-management-message"></p>
+                        
+                        <h3 class="fs-5 mt-4">Add New Student</h3>
+                        <div class="row">
+                            <div class="col-md-6 mb-3"><label for="add-name" class="form-label">Name</label><input type="text" id="add-name" class="form-control" placeholder="Full Name"></div>
+                            <div class="col-md-6 mb-3"><label for="add-studentid" class="form-label">Student ID</label><input type="text" id="add-studentid" class="form-control" placeholder="Student ID"></div>
+                            <div class="col-md-6 mb-3"><label for="add-username" class="form-label">Username</label><input type="text" id="add-username" class="form-control" placeholder="Username"></div>
+                            <div class="col-md-6 mb-3"><label for="add-password" class="form-label">Password</label><input type="password" id="add-password" class="form-control" placeholder="Password"></div>
+                        </div>
+                        <button onclick="addNewStudent()" class="btn btn-success">Add Student</button>
+
+                        <h3 class="mt-4">Current Students</h3>
+                        <div id="student-list-container" class="table-responsive"></div>
+
+                        <div id="student-edit-form" class="mt-4" style="display:none;">
+                            <h3 class="border-top pt-3 fs-5">Edit Student</h3>
+                            <input type="hidden" id="edit-user-id">
+                            <div class="mb-3"><label for="edit-name" class="form-label">Name</label><input type="text" id="edit-name" class="form-control" placeholder="Full Name"></div>
+                            <div class="mb-3"><label for="edit-studentid" class="form-label">Student ID</label><input type="text" id="edit-studentid" class="form-control" placeholder="Student ID"></div>
+                            <div class="mb-3"><label for="edit-username" class="form-label">Username</label><input type="text" id="edit-username" class="form-control" placeholder="Username"></div>
+                            <button onclick="saveStudentEdit()" class="btn btn-warning">Save Changes</button>
+                            <button id="cancel-edit-btn" class="btn btn-secondary" onclick="cancelStudentEdit()">Cancel</button>
+                        </div>
+                    </div>
+
+                    <div id="announcements-section" class="card portal-panel">
+                        <h2><i class="fas fa-bullhorn text-secondary-accent me-2"></i> Announcements Section</h2>
+                        
+                        <div id="session-log-card" class="card bg-light">
+                            <h5 class="text-primary mb-2">Session Activity Log</h5>
+                            <div id="login-logout-log">No history found.</div>
+                        </div>
+                        <hr class="mt-4"/>
+                        <h3 class="fs-5">Latest Announcements</h3>
+                        <div id="announcements-list"></div>
+                        
+                        <div id="post-announcement-form" class="mt-4 border-top pt-3">
+                            <h3>Post New Announcement</h3>
+                            <div class="mb-3">
+                                <label for="announcement-title" class="form-label">Title</label>
+                                <input type="text" id="announcement-title" class="form-control" placeholder="Announcement Title">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="announcement-content" class="form-label">Content</label>
+                                <textarea id="announcement-content" class="form-control" placeholder="Content of the announcement"></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="announcement-target-role" class="form-label">Target Role</label>
+                                <select id="announcement-target-role" class="form-select">
+                                    <option value="all" selected>All Users</option>
+                                    <option value="student">Students Only</option>
+                                    <option value="teacher">Teachers/Admins Only</option>
+                                </select>
+                            </div>
+
+                            <button onclick="postAnnouncement()" id="announcement-submit-btn" class="btn btn-primary">Post Announcement</button>
+                        </div>
+                    </div>
+
+                    <div id="timetable-section" class="card portal-panel">
+                        <h2><i class="fas fa-calendar-alt text-secondary-accent me-2"></i> Timetable</h2>
+                        <div id="timetable-content" class="table-responsive"><span class="spinner"></span>Loading timetable...</div>
+
+                        <div id="teacher-timetable-view" class="mt-4 border-top pt-3">
+                            <h3>Add New Slot</h3>
+                            <div class="row">
+                                <div class="col-md-6 mb-3"><label for="tt-course" class="form-label">Course</label><input type="text" id="tt-course" class="form-control" placeholder="Course Name"></div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="tt-day" class="form-label">Day</label>
+                                    <select id="tt-day" class="form-select">
+                                        <option value="Monday">Monday</option>
+                                        <option value="Tuesday">Tuesday</option>
+                                        <option value="Wednesday">Wednesday</option>
+                                        <option value="Thursday">Thursday</option>
+                                        <option value="Friday">Friday</option>
+                                        <option value="Saturday">Saturday</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3"><label for="tt-start" class="form-label">Start Time</label><input type="text" id="tt-start" class="form-control" placeholder="HH:MM (e.g., 09:00)"></div>
+                                <div class="col-md-6 mb-3"><label for="tt-end" class="form-label">End Time</label><input type="text" id="tt-end" class="form-control" placeholder="HH:MM (e.g., 10:00)"></div>
+                            </div>
+                            <p id="tt-entry-message"></p>
+                            <button onclick="submitTimetableSlot()" class="btn btn-success">Add Slot</button>
+                        </div>
+                    </div>
+
+                    <div id="marks-section" class="card portal-panel">
+                        <h2><i class="fas fa-chart-line text-secondary-accent me-2"></i> Marks & Analytics</h2>
+                        <div id="student-marks-view-content">
+                            <div id="overall-performance-trend"></div> 
+                            <h3 class="mt-4">Performance Trend (Comparative)</h3>
+                            <div class="analytics-grid">
+                                <div class="chart-container">
+                                    <p id="marks-info"></p>
+                                    <canvas id="marksChart"></canvas>
+                                </div>
+                                <div class="col-12">
+                                    <h3>Your Marks (Tabular)</h3>
+                                    <div id="marks-table-container" class="table-responsive"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="teacher-marks-view" class="mt-4 border-top pt-3">
+                            <h3>Enter Marks</h3>
+                            <div class="row">
+                                <div class="col-md-6 mb-3"><label for="mark-student-id" class="form-label">Student ID</label><input type="text" id="mark-student-id" class="form-control" placeholder="Student ID"></div>
+                                <div class="col-md-6 mb-3"><label for="mark-course" class="form-label">Course Name</label><input type="text" id="mark-course" class="form-control" placeholder="Course Name"></div>
+                                <div class="col-md-6 mb-3"><label for="mark-exam-type" class="form-label">Exam Type</label><input type="text" id="mark-exam-type" class="form-control" placeholder="Exam Type (e.g., Final)"></div>
+                                <div class="col-md-6 mb-3"><label for="mark-score" class="form-label">Score</label><input type="number" id="mark-score" class="form-control" placeholder="Score (e.g., 85)"></div>
+                                <div class="col-md-6 mb-3"><label for="mark-max-score" class="form-label">Max Score</label><input type="number" id="mark-max-score" class="form-control" placeholder="Max Score (e.g., 100)"></div>
+                            </div>
+                            <p id="mark-entry-message"></p>
+                            <button onclick="submitMarkEntry()" class="btn btn-success">Submit Mark</button>
+                        </div>
+                    </div>
+
+                    <div id="attendance-section" class="card portal-panel">
+                        <h2><i class="fas fa-calendar-check text-secondary-accent me-2"></i> Daily Attendance</h2>
+                        
+                        <div id="student-attendance-view">
+                            <h3>Overall Attendance Summary (Ratio View)</h3>
+                            <div class="analytics-grid">
+                                <div class="chart-container" style="max-height: 450px;">
+                                    <canvas id="overallAttendanceChart"></canvas>
+                                </div>
+                                <div id="attendance-summary-table">
+                                    <span class="spinner"></span>Calculating...
+                                </div>
+                            </div>
+
+                            <h3 class="mt-4">Check Specific Day</h3>
+                            <div class="mb-3">
+                                <label for="attendance-date-selector" class="form-label">Select Date</label>
+                                <input type="date" id="attendance-date-selector" class="form-control" onchange="fetchAttendanceForDate()">
+                            </div>
+                            
+                            <div id="daily-attendance-result">Select a date above.</div>
+                        </div>
+
+                        <div id="teacher-attendance-view" class="mt-4 border-top pt-3">
+                            <h3>Mark Attendance</h3>
+                            <div class="row">
+                                <div class="col-md-6 mb-3"><label for="attendance-student-id" class="form-label">Student ID</label><input type="text" id="attendance-student-id" class="form-control" placeholder="Student ID"></div>
+                                <div class="col-md-6 mb-3"><label for="attendance-course" class="form-label">Course Name</label><input type="text" id="attendance-course" class="form-control" placeholder="Course Name"></div>
+                                <div class="col-md-6 mb-3"><label for="attendance-log-date" class="form-label">Date</label><input type="date" id="attendance-log-date" class="form-control"></div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="attendance-status-select" class="form-label">Status</label>
+                                    <select id="attendance-status-select" class="form-select">
+                                        <option value="Present">Present</option>
+                                        <option value="Absent">Absent</option>
+                                        <option value="Late">Late</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <p id="attendance-entry-message"></p>
+                            <button onclick="submitAttendanceEntry()" class="btn btn-success">Mark Attendance</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+
+    <script>
+        let currentUser = null;
+        let marksChartInstance = null;
+        let attendanceChartInstance = null;
+        const SESSION_KEY = 'portalUserSession';
+        let allStudentsCache = [];
+        let allCoursesCache = [];
+        let currentEditingAnnouncementId = null; 
+
+        const ADVISORS = [
+            { username: 'amita', name: 'Amita Sharma' },
+            { username: 'sachin', name: 'Sachin Verma' },
+            { username: 'mehak', name: 'Mehak Kaur' }
+        ];
+
+        // --- CORE UTILITIES ---
+        function getAuthHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'X-User-Role': currentUser ? currentUser.role : 'guest',
+                'X-User-Username': currentUser ? currentUser.username : ''
+            };
+        }
+
+        function resetValidation(formId) {
+            document.querySelectorAll('#' + formId + ' .form-control').forEach(input => {
+                input.classList.remove('is-invalid');
+            });
+            document.querySelectorAll('#' + formId + ' .invalid-feedback').forEach(feedback => {
+                feedback.textContent = '';
+            });
+            const messageEl = document.getElementById(formId.replace('-section', '') + '-message');
+            if (messageEl) messageEl.textContent = '';
+        }
+
+        function applyValidationError(inputElement, message) {
+            inputElement.classList.add('is-invalid');
+            const feedbackId = inputElement.id + '-feedback';
+            const feedbackElement = document.getElementById(feedbackId);
+            if (feedbackElement) {
+                feedbackElement.textContent = message;
+            }
+        }
+
+        function updateSessionLog(username, action) {
+            const logKey = 'sessionLog_' + username;
+            let log = JSON.parse(localStorage.getItem(logKey) || '[]');
+            const timestamp = new Date().toLocaleString();
+            log.unshift({ action, timestamp });
+            if (log.length > 10) log.pop();
+            localStorage.setItem(logKey, JSON.stringify(log));
+            
+            if (document.getElementById('announcements-section').style.display === 'block') {
+                 renderSessionLog();
+            }
+        }
+
+        function renderSessionLog() {
+            if (!currentUser) return;
+            const logContainer = document.getElementById('login-logout-log');
+            if (!logContainer) return;
+            const logKey = 'sessionLog_' + currentUser.username;
+            let log = JSON.parse(localStorage.getItem(logKey) || '[]');
+            
+            if (log.length === 0) {
+                 logContainer.innerHTML = '<div class="log-entry text-muted">No recent activity recorded for this user.</div>';
+                 return;
+            }
+
+            let html = '';
+            log.forEach(entry => {
+                const icon = entry.action === 'Login' ? 'fa-arrow-right-to-bracket text-success' : 'fa-arrow-right-from-bracket text-danger';
+                html += '<div class="log-entry"><i class="fas ' + icon + ' fa-fw me-2"></i> <strong>' + entry.action + ':</strong> ' + entry.timestamp + '</div>';
+            });
+            logContainer.innerHTML = html;
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast ' + type;
+            toast.textContent = message;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.transform = 'translateX(100%)';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        function switchPage(pageName) {
+            const authPageEl = document.getElementById('auth-page');
+            const dashboardPageEl = document.getElementById('dashboard-page');
+            const authBgEl = document.getElementById('auth-bg-image');
+            const threeBgEl = document.getElementById('three-bg');
+            const h1El = document.querySelector('h1');
+
+            if (pageName === 'auth') {
+                authPageEl.style.display = 'flex';
+                dashboardPageEl.style.display = 'none';
+
+                authBgEl.style.opacity = '1';
+                threeBgEl.style.opacity = '0';
+                h1El.style.display = 'block';
+
+            } else if (pageName === 'dashboard') {
+                authPageEl.style.display = 'none';
+                dashboardPageEl.style.display = 'block';
+
+                authBgEl.style.opacity = '0';
+                threeBgEl.style.opacity = '0.15';
+                h1El.style.display = 'none';
+            }
+        }
+
+        function switchAuthForm(formName) {
+            const loginEl = document.getElementById('login-section');
+            const signupEl = document.getElementById('signup-section');
+
+            if (formName === 'login') {
+                loginEl.style.display = 'block';
+                signupEl.style.display = 'none';
+                resetValidation('login-section');
+            } else {
+                signupEl.style.display = 'block';
+                loginEl.style.display = 'none';
+                resetValidation('signup-section');
+            }
+        }
+
+        function checkSession() {
+            const storedUser = localStorage.getItem(SESSION_KEY);
+            if (storedUser) {
+                try {
+                    currentUser = JSON.parse(storedUser);
+                    switchPage('dashboard');
+                    renderDashboard();
+                } catch (e) {
+                    console.error('Failed to parse stored session:', e);
+                    localStorage.removeItem(SESSION_KEY);
+                    switchPage('auth');
+                }
+            } else {
+                switchPage('auth');
+            }
+        }
+
+        function handleLogout() {
+            if (currentUser) {
+                updateSessionLog(currentUser.username, 'Logout');
+                showToast('Logged out successfully.', 'success');
+            }
+            currentUser = null;
+            localStorage.removeItem(SESSION_KEY);
+            switchPage('auth');
+            switchAuthForm('login');
+            if (marksChartInstance) marksChartInstance.destroy();
+            if (attendanceChartInstance) attendanceChartInstance.destroy();
+        }
+
+        // --- 1. AUTHENTICATION ---
+
+        async function handleLogin() {
+            const username = document.getElementById('username');
+            const password = document.getElementById('password');
+            const messageEl = document.getElementById('login-message');
+            const loginBtn = document.getElementById('login-btn');
+
+            resetValidation('login-section');
+
+            if (!username.value || !password.value) {
+                if (!username.value) applyValidationError(username, 'Username is required.');
+                if (!password.value) applyValidationError(password, 'Password is required.');
+                messageEl.textContent = 'Please fill in all required fields.';
+                return;
+            }
+
+            messageEl.innerHTML = '<span class="spinner"></span>Authenticating...';
+            loginBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: username.value, password: password.value })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    currentUser = data.user;
+                    localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
+                    updateSessionLog(currentUser.username, 'Login');
+
+                    messageEl.textContent = '';
+                    switchPage('dashboard');
+                    renderDashboard();
+                    showToast('Welcome, ' + currentUser.name + '!', 'success');
+                } else {
+                    messageEl.textContent = data.message || 'Login failed. Check credentials.';
+                }
+            } catch (error) {
+                console.error('Login Fetch Error:', error);
+                messageEl.textContent = 'Connection error. Is the server running?';
+            } finally {
+                loginBtn.disabled = false;
+            }
+        }
+
+        async function handleSignup() {
+            const name = document.getElementById('signup-name');
+            const studentId = document.getElementById('signup-studentid');
+            const username = document.getElementById('signup-username');
+            const password = document.getElementById('signup-password');
+            const secretKey = document.getElementById('signup-secret-key').value;
+            const messageEl = document.getElementById('signup-message');
+            const signupBtn = document.getElementById('signup-btn');
+
+            resetValidation('signup-section');
+            let isValid = true;
+
+            if (!name.value) { applyValidationError(name, 'Full name is required.'); isValid = false; }
+            if (!username.value) { applyValidationError(username, 'Username is required.'); isValid = false; }
+            if (!password.value) { applyValidationError(password, 'Password is required.'); isValid = false; }
+
+            if (!secretKey && !studentId.value) {
+                applyValidationError(studentId, 'Student ID is required for student registration.');
+                isValid = false;
+            } else if (secretKey && studentId.value) {
+                applyValidationError(studentId, 'Student ID should be blank for Teacher registration.');
+                isValid = false;
+            }
+
+            if (!isValid) {
+                messageEl.textContent = 'Please correct the highlighted fields.';
+                return;
+            }
+
+            messageEl.innerHTML = '<span class="spinner"></span>Registering user...';
+            signupBtn.disabled = true;
+
+            const payload = { name: name.value, username: username.value, password: password.value };
+            if (secretKey) {
+                payload.secretKey = secretKey;
+            } else if (studentId.value) {
+                payload.studentId = studentId.value;
+            }
+
+            try {
+                const response = await fetch('/api/auth/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    const role = data.user.role;
+                    messageEl.textContent = role + ' registration successful! Redirecting to login...';
+                    messageEl.className = 'text-success';
+                    setTimeout(() => switchAuthForm('login'), 2000);
+                } else {
+                    messageEl.textContent = data.message || 'Registration failed.';
+                    messageEl.className = 'text-danger';
+                }
+            } catch (error) {
+                messageEl.textContent = 'Connection error during registration.';
+                messageEl.className = 'text-danger';
+            } finally {
+                signupBtn.disabled = false;
+            }
+        }
+
+        // --- 2. DASHBOARD RENDERING & NAVIGATION ---
+
+        function renderDashboard() {
+            if (!currentUser) return handleLogout();
+
+            const isStudent = currentUser.role === 'student';
+            const isTeacher = currentUser.role === 'teacher' || currentUser.role === 'admin';
+
+            document.querySelector('#welcome-text h2').textContent = 'Welcome, ' + currentUser.name + ' (' + currentUser.role.toUpperCase() + ')!';
+            const quotes = [
+                'Your journey starts here. Make today count!',
+                'Success is the sum of small efforts repeated daily.',
+                'Stay curious and keep learning!',
+                'The only way to do great work is to love what you do.'
+            ];
+            document.getElementById('welcome-quote').textContent = quotes[Math.floor(Math.random() * quotes.length)];
+
+            // Navigation setup (simplified for brevity, assumes correct list population)
+            const navListEl = document.getElementById('nav-list');
+            navListEl.innerHTML = '';
+
+            const studentNavItems = [
+                { id: 'announcements-section', label: 'Announcements', icon: 'fas fa-bullhorn' },
+                { id: 'course-planner-section', label: 'Course Planner', icon: 'fas fa-layer-group' },
+                { id: 'my-fees-dues-section', label: 'My Fees & Dues', icon: 'fas fa-receipt' },
+                { id: 'timetable-section', label: 'Timetable', icon: 'fas fa-calendar-alt' },
+                { id: 'marks-section', label: 'Marks & Analytics', icon: 'fas fa-chart-line' },
+                { id: 'attendance-section', label: 'Attendance', icon: 'fas fa-calendar-check' },
+                { id: 'progress-tracker-section', label: 'Progress Tracker', icon: 'fas fa-graduation-cap' },
+                { id: 'advising-hub-section', label: 'Advising Hub', icon: 'fas fa-user-friends' },
+                { id: 'documents-forms-section', label: 'Documents & Forms', icon: 'fas fa-file-contract' },
+                { id: 'it-support-section', label: 'IT Support', icon: 'fas fa-headset' },
+            ];
+
+            const teacherNavItems = [
+                { id: 'announcements-section', label: 'Announcements', icon: 'fas fa-bullhorn' },
+                { id: 'user-management-section', label: 'Student Management', icon: 'fas fa-user-tie' },
+                { id: 'course-planner-section', label: 'Course Management', icon: 'fas fa-layer-group' },
+                { id: 'my-fees-dues-section', label: 'Fees Management', icon: 'fas fa-receipt' },
+                { id: 'advising-hub-section', label: 'Advising Schedule', icon: 'fas fa-user-friends' },
+                { id: 'it-support-section', label: 'IT Tickets Review', icon: 'fas fa-headset' },
+                { id: 'timetable-section', label: 'Timetable (My Classes)', icon: 'fas fa-calendar-alt' },
+                { id: 'marks-section', label: 'Enter Marks', icon: 'fas fa-chart-line' },
+                { id: 'attendance-section', label: 'Log Attendance', icon: 'fas fa-calendar-check' },
+            ];
+            
+            const navItems = isStudent ? studentNavItems : teacherNavItems;
+
+            navItems.forEach(item => {
+                const li = document.createElement('li');
+                const a = document.createElement('a');
+                a.href = '#';
+                a.innerHTML = '<i class="' + item.icon + '"></i> ' + item.label;
+                a.setAttribute('data-panel', item.id);
+                a.onclick = (e) => {
+                    e.preventDefault();
+                    changePanel(item.id);
+                };
+                li.appendChild(a);
+                navListEl.appendChild(li);
+            });
+            if (navItems.length > 0) {
+                changePanel(navItems[0].id);
+            }
+
+            // Conditional visibility for Teacher management tools/Student views
+            const panelsToControl = [
+                'teacher-attendance-view', 'teacher-marks-view', 'teacher-timetable-view', 'post-announcement-form', 'user-management-section', 'teacher-fees-management', 'teacher-course-management', 'teacher-advising-schedule', 'teacher-ticket-review',
+                'student-attendance-view', 'student-marks-view-content', 'student-fees-details', 'student-advising-booking', 'student-ticket-submission', 'student-course-enrollment', 'progress-tracker-section', 'documents-forms-section'
+            ];
+            panelsToControl.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    const isTeacherPanel = id.startsWith('teacher') || id.endsWith('management') || id.includes('admin') || id.includes('post-announcement-form');
+                    const isStudentPanel = id.startsWith('student') || id.includes('progress-tracker') || id.includes('documents-forms');
+                    
+                    if (isTeacherPanel) {
+                        el.style.display = isTeacher ? 'block' : 'none';
+                    } else if (isStudentPanel) {
+                        el.style.display = isStudent ? 'block' : 'none';
+                    }
+                }
+            });
+
+            document.getElementById('session-log-card').style.display = 'block';
+
+            // Initial fetches
+            if (isStudent) {
+                const advisorSelect = document.getElementById('advisor-select');
+                if (advisorSelect) advisorSelect.innerHTML = ADVISORS.map(a => `<option value="${a.username}">${a.name}</option>`).join('');
+                fetchStudentFeeOverview();
+                fetchMarksAnalytics(currentUser.studentId);
+                fetchOverallAttendanceSummary(currentUser.studentId);
+                const today = new Date().toISOString().split('T')[0];
+                const selector = document.getElementById('attendance-date-selector');
+                if (selector) selector.value = today;
+                fetchAttendanceForDate();
+            }
+
+            if (isTeacher) {
+                fetchStudentList();
+                fetchFeesManagementData();
+                fetchTeacherAppointments();
+                fetchTickets();
+            }
+            const logDateEl = document.getElementById('attendance-log-date');
+            if (logDateEl) logDateEl.value = new Date().toISOString().split('T')[0];
+        }
+
+        function changePanel(panelId) {
+            document.querySelectorAll('#nav-list a').forEach(link => {
+                link.classList.remove('active');
+            });
+
+            document.querySelectorAll('.portal-panel').forEach(panel => {
+                panel.style.display = 'none';
+            });
+
+            const activePanel = document.getElementById(panelId);
+            if (activePanel) {
+                activePanel.style.display = 'block';
+                document.querySelector('[data-panel="' + panelId + '"]').classList.add('active');
+            }
+
+            if (panelId === 'announcements-section') {
+                renderSessionLog();
+                fetchAnnouncements();
+            } else if (panelId === 'my-fees-dues-section') {
+                fetchFeeData();
+            } else if (panelId === 'advising-hub-section') {
+                fetchAppointments();
+            } else if (panelId === 'it-support-section') {
+                fetchTickets();
+            } else if (panelId === 'course-planner-section' && (currentUser.role === 'teacher' || currentUser.role === 'admin')) {
+                fetchTeacherCourses();
+            } else if (panelId === 'course-planner-section' && currentUser.role === 'student') {
+                fetchStudentCoursesForEnrollment();
+            } else if (panelId === 'timetable-section') {
+                fetchTimetable();
+            }
+        }
+        
+        // --- 3. STUDENT MANAGEMENT ---
+        async function fetchStudentList() {
+            const listContainer = document.getElementById('student-list-container');
+            listContainer.innerHTML = '<span class="spinner"></span>Loading students...';
+            const headers = getAuthHeaders();
+
+            try {
+                const response = await fetch('/api/users/students', { headers });
+                const students = await response.json();
+
+                if (!response.ok) {
+                    listContainer.innerHTML = '<p class="text-danger">' + (students.message || 'Error fetching data.') + '</p>';
+                    return;
+                }
+
+                allStudentsCache = students; // Cache for enrollment tool
+                if (students.length === 0) {
+                    listContainer.innerHTML = '<p class="text-muted mt-3">No students currently registered.</p>';
+                    return;
+                }
+
+                let tableHtml = '<table class="data-table table table-striped table-hover"><thead><tr><th>Name</th><th>Student ID</th><th>Username</th><th>Actions</th></tr></thead><tbody>';
+                students.forEach(student => {
+                    tableHtml += `<tr><td>${student.name}</td><td>${student.studentId}</td><td>${student.username}</td><td><button class="btn btn-sm btn-warning me-2" onclick="editStudent('${student._id}', '${student.name}', '${student.studentId}', '${student.username}')">Edit</button><button class="btn btn-sm btn-danger" onclick="deleteStudent('${student._id}', '${student.name}')">Delete</button></td></tr>`;
+                });
+                tableHtml += '</tbody></table>';
+                listContainer.innerHTML = tableHtml;
+            } catch (error) {
+                listContainer.innerHTML = '<p class="text-danger">Connection error fetching student list.</p>';
+                console.error('Error fetching student list:', error);
+            }
+        }
+
+        async function addNewStudent() {
+            const name = document.getElementById('add-name').value;
+            const studentId = document.getElementById('add-studentid').value;
+            const username = document.getElementById('add-username').value;
+            const password = document.getElementById('add-password').value;
+            const messageEl = document.getElementById('user-management-message');
+
+            if (!name || !studentId || !username || !password) {
+                messageEl.textContent = 'All fields are required to add a new student.';
+                messageEl.className = 'text-danger';
+                return;
+            }
+
+            const headers = getAuthHeaders();
+
+            try {
+                const response = await fetch('/api/users/students', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ name, studentId, username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showToast('Student ' + name + ' added successfully. Fee record created.', 'success');
+                    messageEl.textContent = data.message;
+                    messageEl.className = 'text-success';
+                    document.getElementById('add-name').value = '';
+                    document.getElementById('add-studentid').value = '';
+                    document.getElementById('add-username').value = '';
+                    document.getElementById('add-password').value = '';
+                    fetchStudentList();
+                } else {
+                    showToast(data.message || 'Failed to add student.', 'error');
+                    messageEl.textContent = data.message || 'Failed to add student.';
+                    messageEl.className = 'text-danger';
+                }
+            } catch (error) {
+                messageEl.textContent = 'Connection error while adding student.';
+                messageEl.className = 'text-danger';
+                console.error('Error adding student:', error);
+            }
+        }
+
+        function editStudent(id, name, studentId, username) {
+            document.getElementById('edit-user-id').value = id;
+            document.getElementById('edit-name').value = name;
+            document.getElementById('edit-studentid').value = studentId;
+            document.getElementById('edit-username').value = username;
+            document.getElementById('student-edit-form').style.display = 'block';
+            document.getElementById('student-edit-form').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function cancelStudentEdit() {
+            document.getElementById('student-edit-form').style.display = 'none';
+            document.getElementById('user-management-message').textContent = '';
+        }
+
+        async function saveStudentEdit() {
+            const id = document.getElementById('edit-user-id').value;
+            const name = document.getElementById('edit-name').value;
+            const studentId = document.getElementById('edit-studentid').value;
+            const username = document.getElementById('edit-username').value;
+            const messageEl = document.getElementById('user-management-message');
+
+            if (!name || !studentId || !username) {
+                messageEl.textContent = 'Name, Student ID, and Username are required.';
+                messageEl.className = 'text-danger';
+                return;
+            }
+
+            const headers = getAuthHeaders();
+
+            try {
+                const response = await fetch('/api/users/students/' + id, {
+                    method: 'PUT',
+                    headers,
+                    body: JSON.stringify({ name, studentId, username })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showToast('Student ' + name + ' updated successfully.', 'success');
+                    messageEl.textContent = data.message;
+                    messageEl.className = 'text-success';
+                    cancelStudentEdit();
+                    fetchStudentList();
+                } else {
+                    messageEl.textContent = data.message || 'Failed to update student.';
+                    messageEl.className = 'text-danger';
+                }
+            } catch (error) {
+                messageEl.textContent = 'Connection error while updating student.';
+                messageEl.className = 'text-danger';
+                console.error('Error updating student:', error);
+            }
+        }
+
+        async function deleteStudent(id, name) {
+            const messageEl = document.getElementById('user-management-message');
+            const originalMessage = messageEl.innerHTML;
+            messageEl.innerHTML = '<span class="text-warning me-2">Are you sure you want to delete ' + name + '? This will delete all associated data. </span><button class="btn btn-sm btn-danger" onclick="executeDelete(\'' + id + '\', \'' + name + '\')">Confirm Delete</button>';
+            messageEl.className = 'alert alert-warning d-flex align-items-center justify-content-between';
+
+            setTimeout(() => {
+                if (messageEl.innerHTML.includes('Confirm Delete')) {
+                    messageEl.innerHTML = originalMessage;
+                    messageEl.className = '';
+                }
+            }, 10000);
+        }
+
+        async function executeDelete(id, name) {
+            const messageEl = document.getElementById('user-management-message');
+            messageEl.innerHTML = '<span class="spinner"></span>Deleting...';
+            messageEl.className = '';
+
+            const headers = getAuthHeaders();
+
+            try {
+                const response = await fetch('/api/users/students/' + id, {
+                    method: 'DELETE',
+                    headers
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showToast('Student ' + name + ' deleted successfully.', 'success');
+                    messageEl.textContent = data.message;
+                    messageEl.className = 'text-success';
+                    fetchStudentList();
+                } else {
+                    messageEl.textContent = data.message || 'Failed to delete student.';
+                    messageEl.className = 'text-danger';
+                }
+            } catch (error) {
+                messageEl.textContent = 'Connection error while deleting student.';
+                messageEl.className = 'text-danger';
+                console.error('Error deleting student:', error);
+            }
+        }
+
+
+        // --- 4. ANNOUNCEMENTS (CRUD FIXED) ---
+        async function fetchAnnouncements() {
+            const listEl = document.getElementById('announcements-list');
+            listEl.innerHTML = '<span class="spinner"></span>Fetching announcements...';
+            const isTeacher = currentUser.role === 'teacher' || currentUser.role === 'admin';
+
+            try {
+                const response = await fetch('/api/announcements');
+                const announcements = await response.json();
+
+                if (announcements.length === 0) {
+                       listEl.innerHTML = '<p class="text-center text-muted p-3">No recent announcements.</p>';
+                       return;
+                }
+
+                const relevantAnnouncements = announcements.filter(ann =>
+                    ann.targetRole === 'all' || ann.targetRole === currentUser.role
+                );
+
+                if (relevantAnnouncements.length === 0) {
+                     listEl.innerHTML = '<p class="text-center text-muted p-3">No relevant announcements for your role.</p>';
+                     return;
+                }
+
+
+                let html = '';
+                relevantAnnouncements.forEach(ann => {
+                    const date = new Date(ann.date).toLocaleDateString();
+
+                    html += `
+                            <div class="announcement-item border-bottom pb-3 mb-3" data-id="${ann._id}">
+                                <h4 class="text-primary">${ann.title} <span class="badge bg-secondary">${ann.targetRole.toUpperCase()}</span></h4>
+                                <p class="mb-1">${ann.content}</p>
+
+                                <div class="announcement-footer">
+                                    Posted by: ${ann.postedBy} on ${date}
+                                </div>
+
+                                ${isTeacher ? `
+                                    <div class="announcement-actions mt-2">
+                                        <button class="btn btn-sm btn-warning me-2" onclick="editAnnouncement('${ann._id}', '${ann.title.replace(/'/g, "\\'")}', '${ann.content.replace(/'/g, "\\'")}', '${ann.targetRole}')"><i class="fas fa-edit"></i> Edit</button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteAnnouncement('${ann._id}', '${ann.title.replace(/'/g, "\\'")}')"><i class="fas fa-trash-alt"></i> Delete</button>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                });
+                listEl.innerHTML = html;
+            } catch (error) {
+                listEl.innerHTML = '<p class="text-danger">Could not load announcements.</p>';
+            }
+        }
+        
+        function editAnnouncement(id, title, content, targetRole) {
+            currentEditingAnnouncementId = id;
+            document.getElementById('announcement-title').value = title;
+            document.getElementById('announcement-content').value = content;
+            document.getElementById('announcement-target-role').value = targetRole;
+
+            const submitBtn = document.getElementById('announcement-submit-btn');
+            submitBtn.textContent = 'Save Changes';
+            submitBtn.className = 'btn btn-warning';
+            submitBtn.onclick = saveEditedAnnouncement;
+
+            document.querySelector('#post-announcement-form h3').textContent = 'Edit Announcement';
+            document.getElementById('announcements-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function cancelEditAnnouncement() {
+            currentEditingAnnouncementId = null;
+            document.getElementById('announcement-title').value = '';
+            document.getElementById('announcement-content').value = '';
+            document.getElementById('announcement-target-role').value = 'all';
+
+            const submitBtn = document.getElementById('announcement-submit-btn');
+            submitBtn.textContent = 'Post Announcement';
+            submitBtn.className = 'btn btn-primary';
+            submitBtn.onclick = postAnnouncement;
+
+            document.querySelector('#post-announcement-form h3').textContent = 'Post New Announcement';
+            fetchAnnouncements();
+        }
+
+        async function saveEditedAnnouncement() {
+            const id = currentEditingAnnouncementId;
+            const title = document.getElementById('announcement-title').value;
+            const content = document.getElementById('announcement-content').value;
+            const targetRole = document.getElementById('announcement-target-role').value;
+
+            if (!id || !title || !content) {
+                showToast('Title and content are required.', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/announcements/${id}`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ title, content, targetRole })
+                });
+
+                if (response.ok) {
+                    showToast('Announcement updated successfully!', 'success');
+                    cancelEditAnnouncement();
+                } else {
+                    showToast('Failed to update announcement.', 'error');
+                }
+            } catch (error) {
+                showToast('Connection error during announcement update.', 'error');
+            }
+        }
+
+        async function deleteAnnouncement(id, title) {
+            if (!confirm(`Are you sure you want to delete the announcement: "${title}"?`)) {
+                return;
+            }
+            try {
+                const response = await fetch(`/api/announcements/${id}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
+
+                if (response.ok) {
+                    showToast(`Announcement "${title}" deleted.`, 'success');
+                    fetchAnnouncements();
+                } else {
+                    showToast('Failed to delete announcement.', 'error');
+                }
+            } catch (error) {
+                showToast('Connection error during announcement deletion.', 'error');
+            }
+        }
+        
+        async function postAnnouncement() {
+            const title = document.getElementById('announcement-title').value;
+            const content = document.getElementById('announcement-content').value;
+            const targetRole = document.getElementById('announcement-target-role').value;
+
+            if (!title || !content) {
+                showToast('Title and content are required.', 'error');
+                return;
+            }
+
+            const payload = { 
+                title, 
+                content, 
+                postedBy: currentUser.name, 
+                targetRole 
+            };
+
+            try {
+                const response = await fetch('/api/announcements', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    showToast('Announcement posted successfully!', 'success');
+                    document.getElementById('announcement-title').value = '';
+                    document.getElementById('announcement-content').value = '';
+                    fetchAnnouncements();
+                } else {
+                    showToast('Failed to post announcement.', 'error');
+                }
+            } catch (error) {
+                showToast('Connection error during announcement post.', 'error');
+            }
+        }
+
+
+        // --- 5. COURSE MANAGEMENT (ADD/EDIT/ENROLLMENT) ---
+        async function fetchTeacherCourses() {
+            const listContainer = document.getElementById('teacher-course-list');
+            listContainer.innerHTML = '<span class="spinner"></span>Loading courses...';
+
+            document.getElementById('enrollment-details').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/management/courses/' + currentUser.username, { headers: getAuthHeaders() });
+                const courses = await response.json();
+
+                if (!response.ok) {
+                    listContainer.innerHTML = '<p class="text-danger">' + (courses.message || 'Error fetching data.') + '</p>';
+                    return;
+                }
+
+                allCoursesCache = courses;
+                renderCourseManagementTools();
+
+            } catch (error) {
+                listContainer.innerHTML = '<p class="text-danger">Error fetching courses.</p>';
+            }
+        }
+
+        function renderCourseManagementTools() {
+            const listContainer = document.getElementById('teacher-course-list');
+            const teacherCourses = allCoursesCache.filter(c => c.teacherUsername === currentUser.username);
+
+            // --- 1. Course Management Table ---
+            let courseTableHtml = '<h3 class="fs-5 mt-4">All Course Offerings & Management</h3>';
+            courseTableHtml += '<div id="course-management-forms"></div>';
+
+            if (allCoursesCache.length === 0) {
+                 courseTableHtml += '<p class="text-muted">No courses currently in the system. Use the form below to add one.</p>';
+            } else {
+                 courseTableHtml += '<div class="table-responsive"><table class="data-table table table-striped table-hover"><thead><tr><th>Code</th><th>Title</th><th>Teacher</th><th>Seats</th><th>Actions</th></tr></thead><tbody>';
+                 allCoursesCache.forEach(course => {
+                     const isTaughtByMe = course.teacherUsername === currentUser.username;
+                     const enrollmentRatio = `${course.enrolledStudents.length}/${course.maxSeats}`;
+                     const statusClass = course.enrolledStudents.length < course.maxSeats ? 'text-success' : 'text-danger';
+
+                     courseTableHtml += `
+                         <tr>
+                             <td>${course.courseCode}</td>
+                             <td>${course.title}</td>
+                             <td>${course.teacherUsername}</td>
+                             <td><span class="${statusClass}">${enrollmentRatio}</span></td>
+                             <td>
+                                 <button class="btn btn-sm btn-outline-primary me-2" onclick="showEnrollmentDetails('${course.courseCode}', '${course.title}')">View Enroll</button>
+                                 ${isTaughtByMe ? `<button class="btn btn-sm btn-warning" onclick="showEditCourseForm('${course.courseCode}', '${course.title.replace(/'/g, "\\'")}', ${course.maxSeats}, '${course.teacherUsername}')">Edit</button>` : ''}
+                             </td>
+                         </tr>
+                     `;
+                 });
+                 courseTableHtml += '</tbody></table></div>';
+            }
+            listContainer.innerHTML = courseTableHtml;
+
+            renderAddCourseForm();
+
+            // --- 2. Student Enrollment Tool ---
+            renderStudentEnrollmentTool();
+        }
+
+        function renderAddCourseForm() {
+            const formContainer = document.getElementById('course-management-forms');
+            // Ensure only one instance of the add/edit forms container is present
+            if (!document.getElementById('add-course-form')) {
+                formContainer.insertAdjacentHTML('afterbegin', `
+                    <div id="add-course-form" class="mt-4 border-top pt-3">
+                        <h4 class="fs-5 mb-3">Add New Course</h4>
+                        <div class="row">
+                            <div class="col-md-4 mb-3"><label for="add-course-code" class="form-label">Course Code</label><input type="text" id="add-course-code" class="form-control" placeholder="e.g., CS501"></div>
+                            <div class="col-md-4 mb-3"><label for="add-course-title" class="form-label">Title</label><input type="text" id="add-course-title" class="form-control" placeholder="Course Title"></div>
+                            <div class="col-md-4 mb-3"><label for="add-course-seats" class="form-label">Max Seats</label><input type="number" id="add-course-seats" class="form-control" placeholder="30"></div>
+                        </div>
+                        <p id="add-course-message"></p>
+                        <button onclick="addCourse()" class="btn btn-success"><i class="fas fa-plus"></i> Add Course</button>
+                    </div>
+                    <div id="edit-course-form" class="mt-4 border-top pt-3" style="display:none;"></div>
+                `);
+            }
+        }
+        
+        function showEditCourseForm(courseCode, title, maxSeats, teacherUsername) {
+            const formContainer = document.getElementById('edit-course-form');
+            formContainer.style.display = 'block';
+            formContainer.innerHTML = `
+                <h4 class="fs-5 mb-3">Edit Course: ${courseCode}</h4>
+                <input type="hidden" id="edit-course-code" value="${courseCode}">
+                <div class="row">
+                    <div class="col-md-6 mb-3"><label for="edit-course-title" class="form-label">Title</label><input type="text" id="edit-course-title" class="form-control" value="${title}"></div>
+                    <div class="col-md-6 mb-3"><label for="edit-course-teacher" class="form-label">Teacher (Username)</label><input type="text" id="edit-course-teacher" class="form-control" value="${teacherUsername}"></div>
+                    <div class="col-md-6 mb-3"><label for="edit-course-seats" class="form-label">Max Seats</label><input type="number" id="edit-course-seats" class="form-control" value="${maxSeats}"></div>
+                </div>
+                <p id="edit-course-message"></p>
+                <button onclick="editCourse()" class="btn btn-warning"><i class="fas fa-save"></i> Save Changes</button>
+                <button onclick="document.getElementById('edit-course-form').style.display='none'; document.getElementById('edit-course-message').textContent='';" class="btn btn-secondary">Cancel</button>
+            `;
+            formContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function addCourse() {
+            const courseCode = document.getElementById('add-course-code').value;
+            const title = document.getElementById('add-course-title').value;
+            const maxSeats = document.getElementById('add-course-seats').value;
+            const messageEl = document.getElementById('add-course-message');
+            messageEl.textContent = '';
+
+            if (!courseCode || !title || !maxSeats || isNaN(parseInt(maxSeats))) {
+                messageEl.textContent = 'All fields must be filled correctly.';
+                messageEl.className = 'text-danger';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/management/courses', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ courseCode, title, maxSeats: parseInt(maxSeats) })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showToast(data.message, 'success');
+                    messageEl.textContent = data.message;
+                    messageEl.className = 'text-success';
+                    document.getElementById('add-course-code').value = '';
+                    document.getElementById('add-course-title').value = '';
+                    document.getElementById('add-course-seats').value = '';
+                    fetchTeacherCourses();
+                } else {
+                    messageEl.textContent = data.message || 'Failed to add course.';
+                    messageEl.className = 'text-danger';
+                }
+            } catch (error) {
+                messageEl.textContent = 'Connection error during course creation.';
+                messageEl.className = 'text-danger';
+            }
+        }
+
+        async function editCourse() {
+            const courseCode = document.getElementById('edit-course-code').value;
+            const title = document.getElementById('edit-course-title').value;
+            const teacherUsername = document.getElementById('edit-course-teacher').value;
+            const maxSeats = document.getElementById('edit-course-seats').value;
+            const messageEl = document.getElementById('edit-course-message');
+            messageEl.textContent = '';
+
+            if (!title || !maxSeats || !teacherUsername || isNaN(parseInt(maxSeats))) {
+                messageEl.textContent = 'All fields must be filled correctly.';
+                messageEl.className = 'text-danger';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/management/courses/${courseCode}`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ title, maxSeats: parseInt(maxSeats), teacherUsername })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showToast(data.message, 'success');
+                    messageEl.textContent = data.message;
+                    messageEl.className = 'text-success';
+                    document.getElementById('edit-course-form').style.display = 'none';
+                    fetchTeacherCourses();
+                } else {
+                    messageEl.textContent = data.message || 'Failed to update course.';
+                    messageEl.className = 'text-danger';
+                }
+            } catch (error) {
+                messageEl.textContent = 'Connection error during course update.';
+                messageEl.className = 'text-danger';
+            }
+        }
+
+        async function showEnrollmentDetails(courseCode, courseTitle) {
+            document.getElementById('enrollment-course-title').textContent = courseTitle;
+            const detailsEl = document.getElementById('enrollment-details');
+            detailsEl.style.display = 'flex';
+
+            const enrolledList = document.getElementById('enrolled-students-list');
+            const waitlistList = document.getElementById('waitlist-students-list');
+            enrolledList.innerHTML = '<span class="spinner"></span>';
+            waitlistList.innerHTML = '<span class="spinner"></span>';
+
+            const headers = getAuthHeaders();
+
+            try {
+                const response = await fetch('/api/management/enrollment/' + courseCode, { headers });
+                const data = await response.json();
+
+                if (!response.ok) {
+                       enrolledList.innerHTML = '<p class="text-danger">' + (data.message || 'Failed to load details.') + '</p>';
+                       waitlistList.innerHTML = '';
+                       return;
+                }
+
+                // Render Enrolled
+                let enrolledHtml = '<h5 class="fs-6">Enrolled Students</h5><table class="table table-striped table-sm"><thead><tr><th>ID</th><th>Name</th><th>Action</th></tr></thead><tbody>';
+                data.enrolled.forEach(s => {
+                    enrolledHtml += `<tr><td>${s.studentId}</td><td>${s.name}</td><td><button class="btn btn-sm btn-danger" onclick="enrollStudentViaTool('${s.studentId}', 'drop')">Drop</button></td></tr>`;
+                });
+                enrolledHtml += '</tbody></table>';
+                enrolledList.innerHTML = enrolledHtml;
+                if (data.enrolled.length === 0) enrolledList.innerHTML = '<p class="text-muted">No students currently enrolled.</p>';
+
+
+                // Render Waitlist
+                let waitlistHtml = '<h5 class="fs-6">Waitlist Students</h5><table class="table table-striped table-sm"><thead><tr><th>ID</th><th>Name</th><th>Action</th></tr></thead><tbody>';
+                data.waitlist.forEach(s => {
+                     waitlistHtml += `<tr><td>${s.studentId}</td><td>${s.name}</td><td><button class="btn btn-sm btn-success me-2" onclick="enrollStudentViaTool('${s.studentId}', 'enroll')">Enroll</button><button class="btn btn-sm btn-danger" onclick="enrollStudentViaTool('${s.studentId}', 'drop')">Drop</button></td></tr>`;
+                });
+                waitlistHtml += '</tbody></table>';
+                waitlistList.innerHTML = waitlistHtml;
+                if (data.waitlist.length === 0) waitlistList.innerHTML = '<p class="text-muted">Waitlist is empty.</p>';
+
+            } catch (error) {
+                enrolledList.innerHTML = '<p class="text-danger">Failed to load details.</p>';
+                waitlistList.innerHTML = '';
+            }
+        }
+
+        async function enrollStudentViaTool(studentId, action) {
+            const courseCode = document.getElementById('enroll-course-select').value; 
+
+            if (!courseCode) {
+                showToast('Please select a course first from the Enrollment Tool dropdown.', 'error');
+                return;
+            }
+
+            const headers = getAuthHeaders();
+            const student = allStudentsCache.find(s => s.studentId === studentId);
+            const actionMessage = action === 'enroll' ? 'Enrollment' : (action === 'waitlist' ? 'Waitlisting' : 'Dropping');
+            showToast(`Processing ${actionMessage} for ${student.name}...`, 'info');
+
+            try {
+                const response = await fetch(`/api/management/enrollment/${courseCode}`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ studentId, action })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showToast(data.message, 'success');
+                    allCoursesCache = allCoursesCache.map(c => c.courseCode === courseCode ? data.course : c);
+
+                    refreshStudentStatusInTool();
+                    const courseTitleEl = document.getElementById('enrollment-course-title');
+                    if (courseTitleEl && courseTitleEl.textContent) {
+                         const courseTitle = courseTitleEl.textContent;
+                         showEnrollmentDetails(courseCode, courseTitle);
+                    }
+
+                } else {
+                    showToast(data.message || `Failed to perform ${action}.`, 'error');
+                }
+            } catch (error) {
+                showToast('Connection error during enrollment update.', 'error');
+            }
+        }
+
+        async function renderStudentEnrollmentTool() {
+            const enrollmentToolContainer = document.getElementById('teacher-course-management');
+            let toolContent = document.getElementById('student-enrollment-tool-content');
+
+            if (!toolContent) {
+                enrollmentToolContainer.insertAdjacentHTML('beforeend', '<h3 class="fs-5 mt-5">Student Enrollment Tool</h3><div id="student-enrollment-tool-content"><span class="spinner"></span>Loading students...</div>');
+                toolContent = document.getElementById('student-enrollment-tool-content');
+            } else {
+                toolContent.innerHTML = '<span class="spinner"></span>Loading students...';
+            }
+
+
+            try {
+                if (allStudentsCache.length === 0) {
+                     const studentsResponse = await fetch('/api/users/students', { headers: getAuthHeaders() });
+                     allStudentsCache = await studentsResponse.json();
+                }
+
+                const coursesForSelect = allCoursesCache.filter(c => c.teacherUsername === currentUser.username);
+                
+                if (allStudentsCache.length === 0 || coursesForSelect.length === 0) {
+                     toolContent.innerHTML = `<p class="alert alert-info">Cannot proceed: ${allStudentsCache.length === 0 ? 'No students registered.' : ''} ${coursesForSelect.length === 0 ? 'You are not assigned to any courses.' : ''}</p>`;
+                     return;
+                }
+
+                let courseOptions = coursesForSelect.map(c => `<option value="${c.courseCode}">${c.courseCode} (${c.title})</option>`).join('');
+                
+                let studentTableHtml = `
+                    <p class="text-muted">Select a student and a course, then choose an action below to enroll/waitlist/drop.</p>
+                    <div class="row mb-3 align-items-end">
+                        <div class="col-md-6">
+                            <label for="enroll-course-select" class="form-label">Select Course</label>
+                            <select id="enroll-course-select" class="form-select">${courseOptions}</select>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="data-table table table-striped table-hover">
+                            <thead><tr><th>Student Name</th><th>ID</th><th>Current Status</th><th>Actions</th></tr></thead>
+                            <tbody>
+                `;
+                
+                allStudentsCache.forEach(student => {
+                    const currentCourseCode = coursesForSelect.length > 0 ? coursesForSelect[0].courseCode : '';
+                    const currentCourse = allCoursesCache.find(c => c.courseCode === currentCourseCode);
+                    
+                    let status = 'N/A';
+                    let statusClass = 'text-muted';
+                    
+                    if (currentCourse && currentCourse.enrolledStudents.includes(student.studentId)) {
+                        status = 'Enrolled';
+                        statusClass = 'text-success';
+                    } else if (currentCourse && currentCourse.waitlistStudents.includes(student.studentId)) {
+                        status = 'Waitlisted';
+                        statusClass = 'text-warning';
+                    } else if (currentCourse) {
+                         status = 'Not Enrolled';
+                         statusClass = 'text-info';
+                    }
+
+                    studentTableHtml += `
+                        <tr>
+                            <td>${student.name}</td>
+                            <td>${student.studentId}</td>
+                            <td><span id="status-${student.studentId}" class="${statusClass}">${status}</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-success me-2" onclick="enrollStudentViaTool('${student.studentId}', 'enroll')">Enroll</button>
+                                <button class="btn btn-sm btn-warning me-2" onclick="enrollStudentViaTool('${student.studentId}', 'waitlist')">Waitlist</button>
+                                <button class="btn btn-sm btn-danger" onclick="enrollStudentViaTool('${student.studentId}', 'drop')">Drop</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                studentTableHtml += '</tbody></table></div>';
+                toolContent.innerHTML = studentTableHtml;
+
+                document.getElementById('enroll-course-select').removeEventListener('change', refreshStudentStatusInTool); // Prevent duplicates
+                document.getElementById('enroll-course-select').addEventListener('change', refreshStudentStatusInTool);
+
+            } catch (error) {
+                toolContent.innerHTML = '<p class="text-danger">Error loading enrollment tool data.</p>';
+            }
+        }
+
+        function refreshStudentStatusInTool() {
+            const currentCourseSelect = document.getElementById('enroll-course-select');
+            if (!currentCourseSelect) return;
+            const currentCourseCode = currentCourseSelect.value;
+            const currentCourse = allCoursesCache.find(c => c.courseCode === currentCourseCode);
+
+            allStudentsCache.forEach(student => {
+                const statusEl = document.getElementById(`status-${student.studentId}`);
+                if (!statusEl) return;
+
+                let status = 'N/A';
+                let statusClass = 'text-muted';
+
+                if (currentCourse && currentCourse.enrolledStudents.includes(student.studentId)) {
+                    status = 'Enrolled';
+                    statusClass = 'text-success';
+                } else if (currentCourse && currentCourse.waitlistStudents.includes(student.studentId)) {
+                    status = 'Waitlisted';
+                    statusClass = 'text-warning';
+                } else if (currentCourse) {
+                     status = 'Not Enrolled';
+                     statusClass = 'text-info';
+                }
+                
+                statusEl.textContent = status;
+                statusEl.className = statusClass;
+            });
+        }
+
+
+        // --- 6. FEES MANAGEMENT (Rendering is assumed complete and functional) ---
+        function fetchFeeData() {
+            if (currentUser.role === 'student') {
+                document.getElementById('teacher-fees-management').style.display = 'none';
+                document.getElementById('student-fees-details').style.display = 'block';
+                fetchStudentFeeOverview();
+            } else {
+                document.getElementById('teacher-fees-management').style.display = 'block';
+                document.getElementById('student-fees-details').style.display = 'none';
+                fetchFeesManagementData();
+            }
+        }
+
+        async function fetchStudentFeeOverview() {
+            if (!currentUser.studentId) return;
+            const studentId = currentUser.studentId;
+            const headers = getAuthHeaders();
+
+            try {
+                const response = await fetch('/api/management/fees', { headers });
+                const allFees = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(allFees.message || 'Failed to fetch fees.');
+                }
+
+                // Find the fee records relevant to this student
+                const currentFees = allFees.filter(f => f.studentId === studentId && f.amountDue > 0);
+                currentFees.sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
+                const latestFee = currentFees.length > 0 ? currentFees[0] : null;
+
+                const overviewEl = document.getElementById('student-fee-overview');
+                const historyTableEl = document.getElementById('fee-history-table');
+
+                if (latestFee) {
+                    document.getElementById('fee-status-text').textContent = latestFee.paymentStatus;
+                    document.getElementById('fee-amount-text').textContent = '$' + latestFee.amountDue.toFixed(2);
+
+                    let historyHtml = '<table class="data-table table table-striped table-hover"><thead><tr><th>Semester</th><th>Amount Due</th><th>Due Date</th><th>Status</th></tr></thead><tbody>';
+                    currentFees.forEach(f => {
+                           const statusClass = f.paymentStatus === 'Fully Paid' ? 'text-success' : (f.paymentStatus === 'Unpaid' || f.paymentStatus === 'Partially Paid' ? 'text-danger' : 'text-warning');
+                           historyHtml += '<tr><td>' + f.semester + '</td><td>$' + f.amountDue.toFixed(2) + '</td><td>' + new Date(f.dueDate).toLocaleDateString() + '</td><td class="' + statusClass + '"><strong>' + f.paymentStatus + '</strong></td></tr>';
+                    });
+                    historyHtml += '</tbody></table>';
+                    historyTableEl.innerHTML = historyHtml;
+
+                } else {
+                    document.getElementById('fee-status-text').textContent = 'No Dues';
+                    document.getElementById('fee-amount-text').textContent = '$0.00';
+                    overviewEl.querySelector('.alert-warning').className = overviewEl.querySelector('.alert-warning').className.replace('alert-warning', 'alert-success');
+                    historyTableEl.innerHTML = '<p class="text-muted">No pending or historical fee records found.</p>';
+                }
+            } catch (error) {
+                document.getElementById('student-fee-overview').innerHTML = '<p class="text-danger">Error loading financial data.</p>';
+            }
+        }
+        
+        async function fetchFeesManagementData() {
+            const listContainer = document.getElementById('fee-management-list');
+            listContainer.innerHTML = '<span class="spinner"></span>Loading student fees...';
+
+            const headers = getAuthHeaders();
+
+            try {
+                // FIX: This API now returns ALL students with fee status from the backend aggregation
+                const fees = await fetch('/api/management/fees', { headers }).then(res => res.json());
+
+                if (fees.length === 0) {
+                    listContainer.innerHTML = '<p class="text-muted mt-3">No student fee records found.</p>';
+                    return;
+                }
+
+                let html = '<table class="data-table table table-striped table-hover"><thead><tr><th>Student</th><th>ID</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead><tbody>';
+                fees.forEach(fee => {
+                    const statusClass = fee.paymentStatus === 'Fully Paid' ? 'bg-success' : (fee.paymentStatus === 'Unpaid' || fee.paymentStatus === 'Partially Paid' ? 'bg-danger' : 'bg-secondary');
+                    const isUpdatable = fee.paymentStatus !== 'No Record';
+
+                    html += `
+                            <tr>
+                                <td>${fee.studentName}</td>
+                                <td>${fee.studentId}</td>
+                                <td>$${fee.amountDue.toFixed(2)}</td>
+                                <td><span class="badge ${statusClass}">${fee.paymentStatus}</span></td>
+                                <td>
+                                    ${isUpdatable ? `
+                                    <select onchange="updateFeeStatus('${fee._id}', this.value)" class="form-select form-select-sm">
+                                        <option value="" disabled selected>Update Status</option>
+                                        <option value="Fully Paid" ${fee.paymentStatus === 'Fully Paid' ? 'selected' : ''}>Fully Paid</option>
+                                        <option value="Partially Paid" ${fee.paymentStatus === 'Partially Paid' ? 'selected' : ''}>Partially Paid</option>
+                                        <option value="Unpaid" ${fee.paymentStatus === 'Unpaid' ? 'selected' : ''}>Unpaid</option>
+                                    </select>` : '<span class="text-muted">No current fee record</span>'}
+                                </td>
+                            </tr>
+                        `;
+                });
+                html += '</tbody></table>';
+                listContainer.innerHTML = html;
+            } catch (error) {
+                listContainer.innerHTML = '<p class="text-danger">Error fetching fee management data.</p>';
+            }
+        }
+
+        async function updateFeeStatus(feeId, newStatus) {
+            if (!feeId || !newStatus) return;
+
+            const headers = getAuthHeaders();
+
+            try {
+                const response = await fetch('/api/management/fees/' + feeId, {
+                    method: 'PUT',
+                    headers,
+                    body: JSON.stringify({ paymentStatus: newStatus })
+                });
+
+                if (response.ok) {
+                    showToast('Fee status updated successfully.', 'success');
+                    fetchFeesManagementData();
+                } else {
+                    const data = await response.json();
+                    showToast(data.message || 'Failed to update fee status.', 'error');
+                }
+            } catch (error) {
+                showToast('Connection error during fee update.', 'error');
+            }
+        }
+        
+        // --- Remaining functions (Timetable, Marks, Attendance, Advising, IT Support) are implemented below this line ---
+
+        // 7. TIMETABLE
+        async function fetchTimetable() {
+            const timetableEl = document.getElementById('timetable-content');
+            timetableEl.innerHTML = '<span class="spinner"></span>Loading timetable...';
+
+            try {
+                const response = await fetch('/api/timetable/' + currentUser.role + '/' + currentUser.username);
+                const schedule = await response.json();
+
+                if (!schedule || schedule.length === 0) {
+                    timetableEl.innerHTML = '<p>No schedule found for your role.</p>';
+                    return;
+                }
+
+                let html = '<table class="data-table table table-striped table-hover"><thead><tr><th>Day</th><th>Course</th><th>Time</th><th>Teacher</th></tr></thead><tbody>';
+                schedule.forEach(item => {
+                    html += '<tr><td>' + item.day + '</td><td>' + item.course + '</td><td>' + item.startTime + ' - ' + item.endTime + '</td><td>' + (item.teacherUsername === currentUser.username ? 'You' : item.teacherUsername) + '</td></tr>';
+                });
+                html += '</tbody></table>';
+                timetableEl.innerHTML = html;
+
+            } catch (error) {
+                timetableEl.innerHTML = '<p class="error">Failed to load timetable.</p>';
+            }
+        }
+
+        async function submitTimetableSlot() {
+            const course = document.getElementById('tt-course').value;
+            const day = document.getElementById('tt-day').value;
+            const startTime = document.getElementById('tt-start').value;
+            const endTime = document.getElementById('tt-end').value;
+            const messageEl = document.getElementById('tt-entry-message');
+            messageEl.textContent = '';
+
+            if (!course || !day || !startTime || !endTime) {
+                messageEl.textContent = 'All fields are required.';
+                messageEl.className = 'text-danger';
+                return;
+            }
+
+            const headers = getAuthHeaders();
+
+            try {
+                const response = await fetch('/api/timetable', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        course, day, startTime, endTime,
+                        teacherUsername: currentUser.username
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    showToast('Timetable slot added!', 'success');
+                    fetchTimetable();
+                    document.getElementById('tt-entry-message').textContent = data.message;
+                    document.getElementById('tt-entry-message').className = 'text-success';
+                    document.getElementById('tt-course').value = '';
+                    document.getElementById('tt-start').value = '';
+                    document.getElementById('tt-end').value = '';
+                } else {
+                    messageEl.textContent = data.message || 'Failed to add slot.';
+                    messageEl.className = 'text-danger';
+                }
+            } catch (error) {
+                messageEl.textContent = 'Connection error.';
+                messageEl.className = 'text-danger';
+            }
+        }
+
+
+        // 8. MARKS & ANALYTICS
+        async function submitMarkEntry() {
+            const studentId = document.getElementById('mark-student-id').value;
+            const course = document.getElementById('mark-course').value;
+            const examType = document.getElementById('mark-exam-type').value;
+            const score = document.getElementById('mark-score').value;
+            const maxScore = document.getElementById('mark-max-score').value;
+            const messageEl = document.getElementById('mark-entry-message');
+            messageEl.innerHTML = '<span class="spinner"></span>Submitting...';
+            messageEl.className = '';
+
+            if (!studentId || !course || !examType || !score || !maxScore) {
+                messageEl.textContent = 'All mark fields are required.';
+                messageEl.className = 'text-danger';
+                return;
+            }
+
+            const headers = getAuthHeaders();
+
+            try {
+                const response = await fetch('/api/marks/entry', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ studentId, course, examType, score, maxScore })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    messageEl.textContent = data.message;
+                    messageEl.className = 'text-success';
+                    showToast(data.message, 'success');
+                } else {
+                    messageEl.textContent = data.message || 'Failed to submit mark.';
+                    messageEl.className = 'text-danger';
+                }
+            } catch (error) {
+                messageEl.textContent = 'Connection error during mark submission.';
+                messageEl.className = 'text-danger';
+            }
+        }
+
+        async function fetchMarksAnalytics(studentId) {
+            const marksInfoEl = document.getElementById('marks-info');
+            const marksTableContainer = document.getElementById('marks-table-container');
+            const performanceTrendEl = document.getElementById('overall-performance-trend');
+            performanceTrendEl.innerHTML = '<span class="spinner"></span>Loading performance indicators...';
+            marksInfoEl.innerHTML = '<span class="spinner"></span>Fetching marks data...';
+
+            const themeColors = {
+                accent: getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim(),
+                secondary: getComputedStyle(document.documentElement).getPropertyValue('--secondary-accent').trim(),
+                text: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
+                success: getComputedStyle(document.documentElement).getPropertyValue('--success-color').trim(),
+                error: getComputedStyle(document.documentElement).getPropertyValue('--error-color').trim(),
+            };
+
+            try {
+                const response = await fetch('/api/analytics/marks/' + studentId);
+                const { studentScores, classAverages } = await response.json();
+                marksInfoEl.textContent = '';
+
+                if (marksChartInstance) marksChartInstance.destroy();
+
+                const courses = Object.keys(studentScores);
+                if (courses.length === 0) {
+                    marksInfoEl.textContent = 'No marks data available for this student.';
+                    performanceTrendEl.innerHTML = '<p class="text-muted">No marks data for comparative analysis.</p>';
+                    return;
+                }
+
+                let totalStudentScore = 0;
+                let totalClassAverage = 0;
+                let comparisonCount = 0;
+
+                let tableHtml = '<h3>Your Marks (Tabular)</h3><table class="data-table table table-striped table-hover"><thead><tr><th>Course</th><th>Exam</th><th>Score</th><th>Class Avg</th><th>Status</th></tr></thead><tbody>';
+                const chartLabels = [];
+                const studentData = [];
+                const classAvgData = [];
+
+                courses.forEach(course => {
+                    studentScores[course].forEach(mark => {
+                        const classAvg = classAverages[course] ? (classAverages[course][mark.examType] || null) : null;
+
+                        if (classAvg !== null) {
+                            totalStudentScore += mark.score / mark.maxScore;
+                            totalClassAverage += classAvg / mark.maxScore;
+                            comparisonCount++;
+                        }
+
+                        const percentage = ((mark.score / mark.maxScore) * 100).toFixed(1);
+
+                        const performanceStatus = (classAvg === null) ? 'No Class Data' :
+                                                     (mark.score > classAvg ? 'Above Avg' :
+                                                     (mark.score < classAvg ? 'Below Avg' : 'Average'));
+
+                        tableHtml += '<tr><td>' + mark.course + '</td><td>' + mark.examType + '</td><td>' + mark.score + '/' + mark.maxScore + ' (' + percentage + '%)</td><td>' + (classAvg !== null ? classAvg : '-') + '</td><td style="color:' + (classAvg === null ? themeColors.secondary : (mark.score > classAvg ? themeColors.success : themeColors.error)) + ';"><strong>' + (classAvg !== null ? performanceStatus : 'N/A') + '</strong></td></tr>';
+
+                        chartLabels.push(mark.course + ' (' + mark.examType + ')');
+                        studentData.push(parseFloat(percentage));
+                        classAvgData.push(classAvg !== null ? (classAvg / mark.maxScore) * 100 : null);
+                    });
+                });
+                tableHtml += '</tbody></table>';
+                marksTableContainer.innerHTML = tableHtml;
+
+                if (comparisonCount > 0) {
+                    const overallStudentAvg = totalStudentScore / comparisonCount;
+                    const overallClassAvg = totalClassAverage / comparisonCount;
+
+                    let trendMessage = '';
+                    let trendClass = 'neutral';
+                    let trendIcon = '↔️';
+
+                    if (overallStudentAvg > overallClassAvg * 1.05) {
+                        trendMessage = 'Excellent! Your overall average is ' + (overallStudentAvg * 100).toFixed(1) + '%, which is significantly higher than the class average of ' + (overallClassAvg * 100).toFixed(1) + '%.';
+                        trendClass = 'up';
+                        trendIcon = '⬆️';
+                    } else if (overallStudentAvg < overallClassAvg * 0.95) {
+                        trendMessage = 'Attention Needed. Your overall average of ' + (overallStudentAvg * 100).toFixed(1) + '% is notably below the class average of ' + (overallClassAvg * 100).toFixed(1) + '%.';
+                        trendClass = 'down';
+                        trendIcon = '⬇️';
+                    } else {
+                        trendMessage = 'Stable. Your overall average is close to the class average of ' + (overallClassAvg * 100).toFixed(1) + '%. Keep pushing!';
+                        trendClass = 'neutral';
+                        trendIcon = '↔️';
+                    }
+
+                    performanceTrendEl.innerHTML = '<div class="performance-indicator ' + trendClass + '">' + trendIcon + ' Overall Performance: ' + trendMessage + '</div>';
+                } else {
+                    performanceTrendEl.innerHTML = '<div class="performance-indicator neutral">' + 'ℹ️' + ' No class average data available to determine a trend.</div>';
+                }
+
+                const ctx = document.getElementById('marksChart').getContext('2d');
+                marksChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: chartLabels,
+                        datasets: [
+                            {
+                                label: 'Your Score (%)',
+                                data: studentData,
+                                backgroundColor: themeColors.accent + '90',
+                                borderColor: themeColors.accent,
+                                borderWidth: 1,
+                            },
+                            {
+                                label: 'Class Average (%)',
+                                data: classAvgData,
+                                backgroundColor: themeColors.secondary + '90',
+                                borderColor: themeColors.secondary,
+                                borderWidth: 1,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { labels: { color: themeColors.text, font: { size: 14 } } } },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                title: { display: true, text: 'Score Percentage (%)', color: themeColors.text },
+                                grid: { color: 'rgba(0, 0, 0, 0.1)' },
+                                ticks: { color: themeColors.text }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: themeColors.text }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                marksInfoEl.textContent = 'Failed to load marks analytics.';
+            }
+        }
+
+
+        // 9. ATTENDANCE
+        async function fetchOverallAttendanceSummary(studentId) {
+            const chartCanvas = document.getElementById('overallAttendanceChart');
+            const summaryTableEl = document.getElementById('attendance-summary-table');
+            summaryTableEl.innerHTML = '<span class="spinner"></span>Calculating...';
+
+            const themeColors = {
+                text: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
+                success: getComputedStyle(document.documentElement).getPropertyValue('--success-color').trim(),
+                error: getComputedStyle(document.documentElement).getPropertyValue('--error-color').trim(),
+                warning: getComputedStyle(document.documentElement).getPropertyValue('--warning-color').trim(),
+            };
+
+            try {
+                const response = await fetch('/api/attendance/summary/' + studentId);
+                const summary = await response.json();
+
+                if (summary.length === 0) {
+                    summaryTableEl.innerHTML = '<p>No attendance records found.</p>';
+                    if (attendanceChartInstance) attendanceChartInstance.destroy();
+                    const ctx = chartCanvas.getContext('2d');
+                    ctx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
+                    return;
+                }
+
+                let totalPresent = 0;
+                let grandTotal = 0;
+
+                summary.forEach(item => {
+                    totalPresent += item.presentCount;
+                    grandTotal += item.totalClasses;
+                });
+
+                const totalAbsentOrOther = grandTotal - totalPresent;
+                const overallAvg = grandTotal > 0 ? (totalPresent / grandTotal) * 100 : 0;
+
+                let tableHtml = '<h4 class="fs-6 mt-2">Attendance By Course:</h4><table class="data-table table table-striped table-hover table-sm"><thead><tr><th>Course</th><th>Present</th><th>Total</th><th>%</th></tr></thead><tbody>';
+                summary.forEach(item => {
+                    tableHtml += '<tr><td>' + item.course + '</td><td>' + item.presentCount + '</td><td>' + item.totalClasses + '</td><td>' + item.percentage.toFixed(1) + '%</td></tr>';
+                });
+                tableHtml += '</tbody></table>';
+
+                tableHtml += '<h3 class="fs-5 mt-3">Overall Presence: <span class="text-success">' + overallAvg.toFixed(1) + '%</span></h3>';
+                summaryTableEl.innerHTML = tableHtml;
+
+                if (attendanceChartInstance) {
+                    attendanceChartInstance.destroy();
+                }
+
+                const ctx = document.getElementById('overallAttendanceChart').getContext('2d');
+                attendanceChartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Present', 'Absent/Other'],
+                        datasets: [{
+                            data: [totalPresent, totalAbsentOrOther],
+                            backgroundColor: [themeColors.success, themeColors.error],
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: themeColors.text }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => {
+                                        const value = context.parsed;
+                                        const percent = grandTotal > 0 ? ((value / grandTotal) * 100).toFixed(1) : 0;
+                                        return context.label + ': ' + value + ' (' + percent + '%)';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+            } catch (error) {
+                summaryTableEl.innerHTML = '<p class="text-danger">Error loading attendance summary.</p>';
+            }
+        }
+        
+        async function fetchAttendanceForDate() {
+            const studentId = currentUser.studentId;
+            if (!studentId) return;
+
+            const date = document.getElementById('attendance-date-selector').value;
+            const resultEl = document.getElementById('daily-attendance-result');
+
+            if (!date) {
+                resultEl.innerHTML = 'Select a date to check attendance.';
+                return;
+            }
+
+            resultEl.innerHTML = '<span class="spinner"></span>Checking attendance for ' + date + '...';
+
+            try {
+                const response = await fetch('/api/attendance/' + studentId + '/' + date);
+                const records = await response.json();
+
+                if (records.length === 0) {
+                    resultEl.innerHTML = '<p class="text-info">No classes recorded on ' + date + '.</p>';
+                } else {
+                    let summary = '<h4 class="fs-6 mt-2">Attendance on ' + date + ':</h4>';
+                    records.forEach(r => {
+                        const statusColor = r.status === 'Present' ? 'var(--success-color)' : (r.status === 'Late' ? 'var(--warning-color)' : 'var(--error-color)');
+                        summary += '<p class="mb-1"><strong>' + r.course + ':</strong> <span style="color: ' + statusColor + '; font-weight: bold;">' + r.status + '</span></p>';
+                    });
+                    resultEl.innerHTML = summary;
+                }
+            } catch (error) {
+                resultEl.innerHTML = '<p class="text-danger">Error fetching attendance. Check server logs.</p>';
+            }
+        }
+        
+        async function submitAttendanceEntry() {
+            const studentId = document.getElementById('attendance-student-id').value;
+            const course = document.getElementById('attendance-course').value;
+            const date = document.getElementById('attendance-log-date').value;
+            const status = document.getElementById('attendance-status-select').value;
+            const messageEl = document.getElementById('attendance-entry-message');
+            messageEl.innerHTML = '<span class="spinner"></span>Submitting...';
+            messageEl.className = '';
+
+            if (!studentId || !course || !date || !status) {
+                messageEl.textContent = 'All attendance fields are required.';
+                messageEl.className = 'text-danger';
+                return;
+            }
+
+            const headers = getAuthHeaders();
+
+            try {
+                const response = await fetch('/api/attendance/log', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ studentId, course, date, status })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    messageEl.textContent = data.message;
+                    messageEl.className = 'text-success';
+                    showToast(data.message, 'success');
+                } else {
+                    messageEl.textContent = data.message || 'Failed to submit attendance.';
+                    messageEl.className = 'text-danger';
+                }
+            } catch (error) {
+                messageEl.textContent = 'Connection error during attendance submission.';
+                messageEl.className = 'text-danger';
+            }
+        }
+
+
+        // 10. ADVISING HUB
+        async function fetchAppointments() {
+            if (currentUser.role === 'student') {
+                document.getElementById('teacher-advising-schedule').style.display = 'none';
+                document.getElementById('student-advising-booking').style.display = 'block';
+            } else {
+                document.getElementById('teacher-advising-schedule').style.display = 'block';
+                document.getElementById('student-advising-booking').style.display = 'none';
+                fetchTeacherAppointments();
+            }
+        }
+
+        async function fetchTeacherAppointments() {
+            const listContainer = document.getElementById('appointment-list');
+            listContainer.innerHTML = '<span class="spinner"></span>Loading appointments...';
+
+            const headers = getAuthHeaders();
+
+            try {
+                const response = await fetch('/api/appointments/' + currentUser.username, { headers });
+                const appointments = await response.json();
+
+                if (!response.ok) {
+                    listContainer.innerHTML = '<p class="text-danger">' + (appointments.message || 'Error fetching data.') + '</p>';
+                    return;
+                }
+
+                if (appointments.length === 0) {
+                    listContainer.innerHTML = '<p class="text-muted">You have no upcoming pending appointments.</p>';
+                    return;
+                }
+
+                let html = '<table class="data-table table table-striped table-hover"><thead><tr><th>Date/Time</th><th>Student</th><th>Topic</th><th>Status</th><th>Action</th></tr></thead><tbody>';
+                appointments.forEach(app => {
+                    const formattedDate = new Date(app.date).toLocaleString();
+                    const statusClass = app.status === 'Pending' ? 'bg-warning' : 'bg-primary';
+
+                    html += `
+                            <tr>
+                                <td>${formattedDate}</td>
+                                <td>${app.studentName} (${app.studentId})</td>
+                                <td>${app.topic}</td>
+                                <td><span class="badge ${statusClass}">${app.status}</span></td>
+                                <td><button class="btn btn-sm btn-info" onclick="showToast('Simulating email/chat connection with ${app.studentName}...', 'info')">Connect</button></td>
+                            </tr>
+                        `;
+                });
+                html += '</tbody></table>';
+                listContainer.innerHTML = html;
+            } catch (error) {
+                listContainer.innerHTML = '<p class="text-danger">Error fetching appointments.</p>';
+            }
+        }
+
+        async function bookAppointment() {
+            const teacherUsername = document.getElementById('advisor-select').value;
+            const date = document.getElementById('appointment-date').value;
+            const topic = document.getElementById('appointment-topic').value;
+            const messageEl = document.getElementById('appointment-message');
+
+            if (!teacherUsername || !date || !topic) {
+                messageEl.textContent = 'Please fill all fields.';
+                messageEl.className = 'text-danger';
+                return;
+            }
+
+            const headers = getAuthHeaders();
+
+            try {
+                const response = await fetch('/api/appointments', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        studentId: currentUser.studentId,
+                        studentName: currentUser.name,
+                        teacherUsername,
+                        date,
+                        topic
+                    })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    messageEl.textContent = 'Appointment booked with ' + ADVISORS.find(a => a.username === teacherUsername).name + '. Status: Pending.';
+                    messageEl.className = 'text-success';
+                } else {
+                    messageEl.textContent = data.message || 'Failed to book appointment.';
+                    messageEl.className = 'text-danger';
+                }
+            } catch (error) {
+                messageEl.textContent = 'Connection error during booking.';
+                messageEl.className = 'text-danger';
+            }
+        }
+        
+        // 11. IT SUPPORT
+        async function fetchTickets() {
+            if (currentUser.role === 'student') {
+                document.getElementById('teacher-ticket-review').style.display = 'none';
+                document.getElementById('student-ticket-submission').style.display = 'block';
+            } else {
+                document.getElementById('teacher-ticket-review').style.display = 'block';
+                document.getElementById('student-ticket-submission').style.display = 'none';
+                fetchTeacherTickets();
+            }
+        }
+
+        async function fetchTeacherTickets() {
+            const listContainer = document.getElementById('ticket-list');
+            listContainer.innerHTML = '<span class="spinner"></span>Loading open tickets...';
+
+            const headers = getAuthHeaders();
+
+            try {
+                const response = await fetch('/api/tickets/open', { headers });
+                const tickets = await response.json();
+
+                if (!response.ok) {
+                    listContainer.innerHTML = '<p class="text-danger">' + (tickets.message || 'Error fetching data.') + '</p>';
+                    return;
+                }
+
+                if (tickets.length === 0) {
+                    listContainer.innerHTML = '<p class="text-muted">No open IT tickets requiring review.</p>';
+                    return;
+                }
+
+                let html = '<table class="data-table table table-striped table-hover"><thead><tr><th>Ticket ID</th><th>Title</th><th>Submitted By</th><th>Status</th><th>Update</th></tr></thead><tbody>';
+                tickets.forEach(ticket => {
+                    const statusClass = ticket.status === 'Open' ? 'bg-danger' : 'bg-warning';
+
+                    html += `
+                            <tr>
+                                <td>${ticket._id.substring(18)}</td>
+                                <td>${ticket.title}</td>
+                                <td>${ticket.submittedBy} (${ticket.submittedRole})</td>
+                                <td><span class="badge ${statusClass}">${ticket.status}</span></td>
+                                <td>
+                                    <select onchange="updateTicketStatus('${ticket._id}', this.value)" class="form-select form-select-sm">
+                                        <option value="" disabled selected>Change Status</option>
+                                        <option value="In Progress" ${ticket.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                                        <option value="Closed" ${ticket.status === 'Closed' ? 'selected' : ''}>Closed</option>
+                                    </select>
+                                </td>
+                            </tr>
+                        `;
+                });
+                html += '</tbody></table>';
+                listContainer.innerHTML = html;
+            } catch (error) {
+                listContainer.innerHTML = '<p class="text-danger">Error fetching tickets.</p>';
+            }
+        }
+
+        async function updateTicketStatus(ticketId, newStatus) {
+            const headers = getAuthHeaders();
+
+            try {
+                const response = await fetch('/api/tickets/' + ticketId, {
+                    method: 'PUT',
+                    headers,
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                if (response.ok) {
+                    showToast('Ticket status updated successfully.', 'success');
+                    fetchTeacherTickets();
+                } else {
+                    const data = await response.json();
+                    showToast(data.message || 'Failed to update ticket status.', 'error');
+                }
+            } catch (error) {
+                showToast('Connection error during ticket update.', 'error');
+            }
+        }
+
+        async function submitNewTicket() {
+            const title = document.getElementById('ticket-title').value;
+            const description = document.getElementById('ticket-description').value;
+            const messageEl = document.getElementById('ticket-message');
+
+            if (!title || !description) {
+                messageEl.textContent = 'Title and description are required.';
+                messageEl.className = 'text-danger';
+                return;
+            }
+
+            const payload = {
+                submittedBy: currentUser.username,
+                submittedRole: currentUser.role,
+                title,
+                description
+            };
+
+            const headers = getAuthHeaders();
+
+            try {
+                const response = await fetch('/api/tickets', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    showToast('IT Ticket submitted successfully!', 'success');
+                    messageEl.textContent = 'Ticket submitted. A technician will review it shortly.';
+                    messageEl.className = 'text-success';
+                    document.getElementById('ticket-title').value = '';
+                    document.getElementById('ticket-description').value = '';
+                } else {
+                    const data = await response.json();
+                    messageEl.textContent = data.message || 'Failed to submit ticket.';
+                    messageEl.className = 'text-danger';
+                }
+            } catch (error) {
+                messageEl.textContent = 'Connection error during ticket submission.';
+                messageEl.className = 'text-danger';
+            }
+        }
+
+        // 12. 3D BACKGROUND
+        function initThreeJS() {
+            const container = document.getElementById('three-bg');
+            if (!container || typeof THREE === 'undefined') return;
+            const scene = new THREE.Scene();
+            
+            const camera = new THREE.OrthographicCamera(window.innerWidth / -2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / -2, 1, 1000);
+            
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            const particles = [];
+            const particleCount = 100;
+            const geometry = new THREE.IcosahedronGeometry(15, 0); 
+            const particleColor = 0x17a2b8; 
+            
+            for (let i = 0; i < particleCount; i++) {
+                const material = new THREE.MeshBasicMaterial({ color: particleColor, wireframe: true, opacity: 0.5, transparent: true });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.x = (Math.random() - 0.5) * 2000;
+                mesh.position.y = (Math.random() - 0.5) * 2000;
+                mesh.position.z = -200 - Math.random() * 500;
+                mesh.scale.setScalar(5 + Math.random() * 5);
+                particles.push(mesh);
+                scene.add(mesh);
+            }
+            
+            camera.position.z = 100;
+            
+            function animate() {
+                requestAnimationFrame(animate);
+                particles.forEach(p => {
+                    p.rotation.x += 0.0005;
+                    p.rotation.y += 0.0008;
+                });
+                renderer.render(scene, camera);
+            }
+            
+            animate();
+            
+            window.addEventListener('resize', () => {
+                camera.left = window.innerWidth / -2;
+                camera.right = window.innerWidth / 2;
+                camera.top = window.innerHeight / 2;
+                camera.bottom = window.innerHeight / -2;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+            
+            document.getElementById('three-bg').style.opacity = '0';
+        }
+        
+        // Initial setup call
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof checkSession === 'function') {
+                checkSession();
+            } else {
+                // Simplified manual setup if external checkSession is missing
+                // This assumes standard auth behavior is handled by the script tags.
+                let storedUser = localStorage.getItem(SESSION_KEY);
+                if (storedUser) {
+                    try {
+                        currentUser = JSON.parse(storedUser);
+                        switchPage('dashboard');
+                        renderDashboard();
+                    } catch (e) {
+                         switchPage('auth');
+                    }
+                } else {
+                    switchPage('auth');
+                }
+            }
+            initThreeJS();
+        });
+    </script>
+</body>
+</html>
